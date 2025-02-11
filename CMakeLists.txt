@@ -1,20 +1,15 @@
 cmake_minimum_required(VERSION 3.30)
 
-
-# Set the project name
 project (app)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # sources
-file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS "src/*.cpp") # Define PROJECT_SOURCES as a list of all source files
-
-file(GLOB SOURCES ${PROJECT_SOURCES})
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp") 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC)
 
 find_package(raylib REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC raylib)
 
 # ImGui source files 
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/external/imgui)
@@ -32,6 +27,7 @@ add_library(ImGui STATIC
     ${RLIMGUI_DIR}/rlImGui.cpp
 )
 target_include_directories(ImGui PUBLIC ${IMGUI_DIR} ${IMPLOT_DIR} ${RLIMGUI_DIR})
+target_link_libraries(ImGui PUBLIC raylib)
 target_link_libraries(${PROJECT_NAME} PUBLIC ImGui)
 
 
