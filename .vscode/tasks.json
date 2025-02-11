@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake: workflow",
+			"command": "build",
+			"targets": ["run"],
+			"problemMatcher": ["$gcc"],
+			"detail": "CMake template workflow task",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
+}
