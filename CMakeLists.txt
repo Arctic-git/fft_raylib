@@ -30,6 +30,9 @@ target_include_directories(ImGui PUBLIC ${IMGUI_DIR} ${IMPLOT_DIR} ${RLIMGUI_DIR
 target_link_libraries(ImGui PUBLIC raylib)
 target_link_libraries(${PROJECT_NAME} PUBLIC ImGui)
 
+# portaudio
+add_subdirectory(external/portaudio)
+target_link_libraries(${PROJECT_NAME} PRIVATE portaudio)
 
 add_custom_target(run
     COMMAND ${PROJECT_NAME}
