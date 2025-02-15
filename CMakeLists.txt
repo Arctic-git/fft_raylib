@@ -4,10 +4,16 @@ project (app)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+
+
 # sources
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp") 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC)
+target_compile_definitions(${PROJECT_NAME} PUBLIC PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
 
 find_package(raylib REQUIRED)
 

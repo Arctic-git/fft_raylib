@@ -22,6 +22,8 @@ public:
     void writeFromMonoFloat(const float* samples, size_t count);
     void get(Sample* samples, size_t count);
     int getlr(float* l, float* r, size_t count);
+    int getlri8(int8_t* l, int8_t* r, size_t count);
+    int getlru8(uint8_t* l, uint8_t* r, size_t count);
 
 private:
     int lastHead;
