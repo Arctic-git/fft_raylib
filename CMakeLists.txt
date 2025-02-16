@@ -10,7 +10,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
 
 
 # sources
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp") 
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.c") 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC)
 target_compile_definitions(${PROJECT_NAME} PUBLIC PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/")

@@ -13,6 +13,8 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
 
+// shader doesnt work with 4x msaa. ??
+
 void main() {
   vec2 uv = fragTexCoord;
   // float wave = texture(texture0, fragTexCoord).r;

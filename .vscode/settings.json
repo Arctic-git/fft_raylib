@@ -7,6 +7,8 @@
         "__availability": "cpp",
         "__config": "cpp",
         "__verbose_abort": "cpp",
-        "version": "cpp"
+        "version": "cpp",
+        "rlfixes.h": "c",
+        "raylib.h": "c"
     }
 }
