@@ -11,6 +11,8 @@
  ********************************************************************************************/
 
 #include "AudioSourcePA.h"
+#include "FftPostprocessor.h"
+#include "FftProcessor.h"
 #include "draw.h"
 #include "imgui.h"
 #include "implot.h"
@@ -35,10 +37,13 @@ int main(int argc, char* argv[]) {
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
+    FftProcessor fftProcessor(WAVE_WIDTH, 32768 / 2 / WAVE_WIDTH);
+    fftProcessor.updateWindow(1);
+    FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
 
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | 0);
     InitWindow(screenWidth, screenHeight, "raylib-Extras [ImGui] example - Docking");
-    SetTargetFPS(60);
+    // SetTargetFPS(60);
     rlImGuiSetup(true);
     ImPlot::CreateContext();
 
@@ -50,8 +55,8 @@ int main(int argc, char* argv[]) {
     Texture2D texture = {1, 1, 1, 1, 7};
     SetShapesTexture(texture, (Rectangle){0.0f, 0.0f, 1.0f, 1.0f});
 
-    uint8_t l[WAVE_WIDTH];
-    uint8_t r[WAVE_WIDTH];
+    float l[WAVE_WIDTH];
+    float r[WAVE_WIDTH];
 
     for (int i = 0; i < WAVE_WIDTH; i++) {
         l[i] = i * 255 / (WAVE_WIDTH - 1);
@@ -75,7 +80,8 @@ int main(int argc, char* argv[]) {
     bool wave = true;
     bool wave_outline = true;
     bool wave_fill = true;
-    bool xy = false;
+    bool xy = true;
+    bool fft = true;
 
     while (!WindowShouldClose() && !(IsKeyDown(KEY_W) && (IsKeyDown(KEY_LEFT_SUPER) | IsKeyDown(KEY_LEFT_CONTROL)))) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
@@ -85,8 +91,9 @@ int main(int argc, char* argv[]) {
 
         BeginDrawing();
 
-        ClearBackground(DARKGRAY);
-        DrawCircle(GetScreenWidth() / 2, GetScreenHeight() / 2, GetScreenHeight() * 0.45f, DARKGREEN);
+        // ClearBackground(DARKGRAY);
+        // DrawCircle(GetScreenWidth() / 2, GetScreenHeight() / 2, GetScreenHeight() * 0.45f, DARKGREEN);
+        ClearBackground(BLACK);
 
         float w = GetScreenWidth();
         float h = GetScreenHeight();
@@ -103,10 +110,12 @@ int main(int argc, char* argv[]) {
         // }
 
         if (!pause) {
-            soundbuffer.getlru8(l, r, WAVE_WIDTH);
-            UpdateTexture(texture_w, l);
+            soundbuffer.getlr(l, r, WAVE_WIDTH);
         }
 
+   
+
+        // UpdateTexture(texture_w, lu8);
         // Shader shader_wave = LoadShader(0, PATH_RESOURCES "wave.fs");
         // if (IsShaderValid(shader_wave)) {
         //     BeginShaderMode(shader_wave);
@@ -116,23 +125,30 @@ int main(int argc, char* argv[]) {
         // UnloadShader(shader_wave);
 
         if (wave) {
-            wave_line({0, 0, w, h / 2}, l, WAVE_WIDTH, w, wave_fill, wave_outline);
+            wave_line({0, 0, w, h / 4}, l, WAVE_WIDTH, w, wave_fill, wave_outline);
+            wave_line({0, h/8, w, h / 4}, r, WAVE_WIDTH, w, wave_fill, wave_outline);
         }
 
         if (xy) {
             float gain = 1;
-            for (int i = 0; i < WAVE_WIDTH-1; i++) {
+            for (int i = 0; i < WAVE_WIDTH - 1; i++) {
                 Vector2 v_1 = {
-                    w / 2 + w / 2 * ((float)l[i] / 255 - 0.5f) * gain,
-                    h / 2 + h / 2 * ((float)r[i] / 255 - 0.5f) * gain,
+                    w / 2 + h / 2 * ((float)l[i] ) * gain,
+                    h / 2 + h / 2 * ((float)r[i] ) * gain,
                 };
                 Vector2 v_2 = {
-                    w / 2 + w / 2 * ((float)l[i + 1] / 255 - 0.5f) * gain,
-                    h / 2 + h / 2 * ((float)r[i + 1] / 255 - 0.5f) * gain,
+                    w / 2 + h / 2 * ((float)l[i + 1] ) * gain,
+                    h / 2 + h / 2 * ((float)r[i + 1] ) * gain,
                 };
                 DrawLineEx(v_1, v_2, 2, WHITE);
                 // DrawCircleV(v_1, 1, WHITE);
             }
+        }
+
+        if (fft) {
+            fftProcessor.process(l, r);
+            fftPostprocessorConti.process(fftProcessor.getOutput());
+            fft_conti({0, h / 2, w, h / 2}, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline);
         }
 
         // UnloadShader(shader);
@@ -154,18 +170,17 @@ int main(int argc, char* argv[]) {
         if (settings) {
             rlImGuiBegin();
             ImGui::DockSpaceOverViewport(0, NULL, ImGuiDockNodeFlags_PassthruCentralNode);
-            static bool showDemoWindow = true;
-            if (showDemoWindow)
-                ImGui::ShowDemoWindow(&showDemoWindow);
-
+            ImGui::ShowDemoWindow();
             ImPlot::ShowDemoWindow();
 
             if (ImGui::Begin("Test Window")) {
                 ImGui::TextUnformatted("Another window");
+                ImGui::Checkbox("pause", &pause);
                 ImGui::Checkbox("wave", &wave);
                 ImGui::Checkbox("wave_outline", &wave_outline);
                 ImGui::Checkbox("wave_fill", &wave_fill);
                 ImGui::Checkbox("xy", &xy);
+                ImGui::Checkbox("fft", &fft);
             }
             ImGui::End();
             rlImGuiEnd();

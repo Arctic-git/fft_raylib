@@ -9,6 +9,7 @@
         "__verbose_abort": "cpp",
         "version": "cpp",
         "rlfixes.h": "c",
-        "raylib.h": "c"
+        "raylib.h": "c",
+        "thread": "cpp"
     }
 }

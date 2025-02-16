@@ -40,6 +40,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ImGui)
 add_subdirectory(external/portaudio)
 target_link_libraries(${PROJECT_NAME} PRIVATE portaudio)
 
+# kissfft
+option(KISSFFT_TEST OFF)
+option(KISSFFT_TOOLS OFF)
+option(KISSFFT_STATIC ON)
+option(KISSFFT_PKGCONFIG OFF)
+add_subdirectory(external/kissfft)
+target_link_libraries(${PROJECT_NAME} PRIVATE kissfft)
+
 add_custom_target(run
     COMMAND ${PROJECT_NAME}
     DEPENDS ${PROJECT_NAME}
