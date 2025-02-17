@@ -33,17 +33,17 @@ namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
     int screenWidth = 400;
-    int screenHeight = 400;
+    int screenHeight = 300;
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
-    FftProcessor fftProcessor(WAVE_WIDTH, 32768 / 2 / WAVE_WIDTH);
+    FftProcessor fftProcessor(WAVE_WIDTH, std::max(32768 / 2, WAVE_WIDTH) / WAVE_WIDTH);
     fftProcessor.updateWindow(1);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
 
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE); //| FLAG_WINDOW_HIGHDPI);
     InitWindow(screenWidth, screenHeight, "raylib-Extras [ImGui] example - Docking");
-    // SetTargetFPS(60);
+    SetTargetFPS(60);
     rlImGuiSetup(true);
     ImPlot::CreateContext();
 
@@ -125,6 +125,7 @@ int main(int argc, char* argv[]) {
         // UnloadShader(shader_wave);
 
         if (wave) {
+            rlDisableBackfaceCulling();
             wave_line({0, 0, w, h / 4}, l, WAVE_WIDTH, w, wave_fill, wave_outline);
             wave_line({0, h / 8, w, h / 4}, r, WAVE_WIDTH, w, wave_fill, wave_outline);
         }

@@ -155,6 +155,13 @@ int AudioSourcePA::openDevice(int input, int output, int samplerate) {
         return err;
     }
 
+    const PaStreamInfo *streamInfo = Pa_GetStreamInfo(stream);
+    if(streamInfo){
+        printf("Input %.2f %.2f seconds\n", inputParameters.suggestedLatency, streamInfo->inputLatency);
+        printf("Output %.2f %.2f seconds\n", outputParameters.suggestedLatency, streamInfo->outputLatency);
+        printf("Sample Rate: %f Hz\n", streamInfo->sampleRate);
+    }
+
     err = Pa_StartStream(stream);
     if (err != paNoError) {
         fprintf(stderr, "Error during Pa_StartStream\n");

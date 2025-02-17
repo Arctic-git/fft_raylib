@@ -40,6 +40,40 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
         for (int i = 0; i < wavebins - 1; i++) {
             Vector2 v1 = {
                 b.x + (float)i / (wavebins - 1) * b.width,
+                b.y + b.height * 0.5f,
+            };
+            Vector2 v2 = {
+                (float)i / (wavebins - 1) * b.width,
+                b.y + b.height * ((float)lwmax[i] / 2 + 0.5f),
+            };
+            Vector2 v3 = {
+                (float)(i + 1) / (wavebins - 1) * b.width,
+                b.y + b.height * ((float)lwmax[i + 1] / 2 + 0.5f),
+            };
+            Vector2 v4 = {
+                (float)(i + 1) / (wavebins - 1) * b.width,
+                b.y + b.height * 0.5f,
+            };
+
+            Color color = WHITE;
+
+            rlColor4ub(color.r, color.g, color.b, 50);
+            rlVertex2f(v1.x, v1.y);
+            rlColor4ub(color.r, color.g, color.b, 50 + std::abs(lwmax[i]) * 100);
+            rlVertex2f(v2.x, v2.y);
+            rlColor4ub(color.r, color.g, color.b, 50 + std::abs(lwmax[i + 1]) * 100);
+            rlVertex2f(v3.x, v3.y);
+            rlColor4ub(color.r, color.g, color.b, 50);
+            rlVertex2f(v4.x, v4.y);
+        }
+        rlEnd();
+    }
+
+    if (wave_fill) {
+        rlBegin(RL_QUADS);
+        for (int i = 0; i < wavebins - 1; i++) {
+            Vector2 v1 = {
+                b.x + (float)i / (wavebins - 1) * b.width,
                 b.y + b.height * ((float)lwmin[i] / 2 + 0.5f),
             };
             Vector2 v2 = {
@@ -191,8 +225,8 @@ Color hsv(float H, float S, float V) {
 }
 
 void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline) {
-    float min = -50;
-    float max = 0;
+    float min = -66;
+    float max = -12;
     float bw = float(44100 / 2) / (samples - 1);
 
     if (wave_fill) {
@@ -201,36 +235,39 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
             float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
             float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
 
+            fn = std::max(0.f, fn);
+            fn_1 = std::max(0.f, fn_1);
+
             float relativex = FftPostprocessor::freqToX(i * bw, 22, 22050, 1);
             float relativex_1 = FftPostprocessor::freqToX((i + 1) * bw, 22, 22050, 1);
 
             Vector2 v1 = {
                 b.x + b.width * relativex,
-                b.y + b.height * 1.5f,
+                b.y + b.height,
             };
             Vector2 v2 = {
                 b.x + b.width * relativex,
-                b.y + b.height - b.height * (fn + 0.5f),
+                b.y + b.height - b.height * fn,
             };
             Vector2 v3 = {
                 b.x + b.width * relativex_1,
-                b.y + b.height - b.height * (fn_1 + 0.5f),
+                b.y + b.height - b.height * fn_1,
             };
             Vector2 v4 = {
                 b.x + b.width * relativex_1,
-                b.y + b.height * 1.5f,
+                b.y + b.height,
             };
 
             // Color color = WHITE;
             Color color = hsv(relativex_1 * 360.0, 1, 1);
-            color.a = 160;
-            rlColor4ub(color.r, color.g, color.b, color.a);
+            rlColor4ub(color.r, color.g, color.b, 0);
             rlVertex2f(v4.x, v4.y);
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn_1)));
             rlVertex2f(v3.x, v3.y);
             color = hsv(relativex * 360.0, 1, 1);
-            color.a = 160;
-            rlColor4ub(color.r, color.g, color.b, color.a);
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn)));
             rlVertex2f(v2.x, v2.y);
+            rlColor4ub(color.r, color.g, color.b, 0);
             rlVertex2f(v1.x, v1.y);
         }
         rlEnd();
@@ -240,17 +277,19 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
         for (int i = 0; i < samples - 1; i++) {
             float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
             float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
+            fn = std::max(-8.f / b.height, fn);
+            fn_1 = std::max(-8.f / b.height, fn_1); // line can be 8 px below (linewidth/2)
 
             float relativex = FftPostprocessor::freqToX(i * bw, 22, 22050, 1);
             float relativex_1 = FftPostprocessor::freqToX((i + 1) * bw, 22, 22050, 1);
 
             Vector2 v_1 = {
                 b.x + b.width * relativex,
-                b.y + b.height - b.height * (fn + 0.5f),
+                b.y + b.height - b.height * fn,
             };
             Vector2 v_2 = {
                 b.x + b.width * relativex_1,
-                b.y + b.height - b.height * (fn_1 + 0.5f),
+                b.y + b.height - b.height * fn_1,
             };
 
             // Color color = BLACK;
@@ -258,5 +297,8 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
             DrawLineEx(v_1, v_2, 2, color);
             // DrawCircleV(v_1, 1, WHITE);
         }
+
+        // // hides line on silence
+        // DrawLineEx({b.x, b.y + b.height + 1}, {b.x + b.width, b.y + b.height + 1}, 2, BLACK);
     }
 }
