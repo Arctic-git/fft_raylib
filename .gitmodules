@@ -13,3 +13,6 @@
 [submodule "external/kissfft"]
 	path = external/kissfft
 	url = https://github.com/mborgerding/kissfft.git
+[submodule "external/raylib"]
+	path = external/raylib
+	url = https://github.com/raysan5/raylib.git

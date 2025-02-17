@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     fftProcessor.updateWindow(1);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
 
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | 0);
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE); //| FLAG_WINDOW_HIGHDPI);
     InitWindow(screenWidth, screenHeight, "raylib-Extras [ImGui] example - Docking");
     // SetTargetFPS(60);
     rlImGuiSetup(true);
@@ -87,6 +87,8 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
         if (IsKeyPressed(KEY_P)) pause ^= 1;
         if (IsKeyPressed(KEY_S)) settings ^= 1;
+        if (IsKeyPressed(KEY_B)) ToggleBorderlessWindowed();
+        if (IsKeyPressed(KEY_F)) ToggleFullscreen();
         iTime += GetFrameTime();
 
         BeginDrawing();
@@ -113,8 +115,6 @@ int main(int argc, char* argv[]) {
             soundbuffer.getlr(l, r, WAVE_WIDTH);
         }
 
-   
-
         // UpdateTexture(texture_w, lu8);
         // Shader shader_wave = LoadShader(0, PATH_RESOURCES "wave.fs");
         // if (IsShaderValid(shader_wave)) {
@@ -126,19 +126,19 @@ int main(int argc, char* argv[]) {
 
         if (wave) {
             wave_line({0, 0, w, h / 4}, l, WAVE_WIDTH, w, wave_fill, wave_outline);
-            wave_line({0, h/8, w, h / 4}, r, WAVE_WIDTH, w, wave_fill, wave_outline);
+            wave_line({0, h / 8, w, h / 4}, r, WAVE_WIDTH, w, wave_fill, wave_outline);
         }
 
         if (xy) {
             float gain = 1;
             for (int i = 0; i < WAVE_WIDTH - 1; i++) {
                 Vector2 v_1 = {
-                    w / 2 + h / 2 * ((float)l[i] ) * gain,
-                    h / 2 + h / 2 * ((float)r[i] ) * gain,
+                    w / 2 + h / 2 * ((float)l[i]) * gain,
+                    h / 2 + h / 2 * ((float)r[i]) * gain,
                 };
                 Vector2 v_2 = {
-                    w / 2 + h / 2 * ((float)l[i + 1] ) * gain,
-                    h / 2 + h / 2 * ((float)r[i + 1] ) * gain,
+                    w / 2 + h / 2 * ((float)l[i + 1]) * gain,
+                    h / 2 + h / 2 * ((float)r[i + 1]) * gain,
                 };
                 DrawLineEx(v_1, v_2, 2, WHITE);
                 // DrawCircleV(v_1, 1, WHITE);

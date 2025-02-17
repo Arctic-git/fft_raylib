@@ -5,9 +5,22 @@
 			"type": "cmake",
 			"label": "CMake: workflow",
 			"command": "build",
-			"targets": ["run"],
-			"problemMatcher": ["$gcc"],
+			"targets": [
+				"run"
+			],
+			"problemMatcher": [
+				"$gcc"
+			],
 			"detail": "CMake template workflow task",
+			"group": "build"
+		},
+		{
+			"type": "shell",
+			"label": "build shell",
+			"command": "cmake --build build --config Release --target run -j 10 --",
+			"problemMatcher": [
+				"$gcc"
+			],
 			"group": {
 				"kind": "build",
 				"isDefault": true

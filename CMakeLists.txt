@@ -4,18 +4,22 @@ project (app)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
 
-
-# sources
+# project sources
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.c") 
 add_executable(${PROJECT_NAME} ${SOURCES})
-target_include_directories(${PROJECT_NAME} PUBLIC)
-target_compile_definitions(${PROJECT_NAME} PUBLIC PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
+target_include_directories(${PROJECT_NAME} PRIVATE)
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
 
-find_package(raylib REQUIRED)
+# raylib
+# find_package(raylib REQUIRED)
+add_subdirectory(external/raylib)
+set_property(TARGET raylib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE) #-flto
+target_compile_definitions(raylib PRIVATE RL_DEFAULT_BATCH_BUFFER_ELEMENTS=65536)
+target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
 
 # ImGui source files 
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/external/imgui)
@@ -33,8 +37,8 @@ add_library(ImGui STATIC
     ${RLIMGUI_DIR}/rlImGui.cpp
 )
 target_include_directories(ImGui PUBLIC ${IMGUI_DIR} ${IMPLOT_DIR} ${RLIMGUI_DIR})
-target_link_libraries(ImGui PUBLIC raylib)
-target_link_libraries(${PROJECT_NAME} PUBLIC ImGui)
+target_link_libraries(ImGui PRIVATE raylib)
+target_link_libraries(${PROJECT_NAME} PRIVATE ImGui)
 
 # portaudio
 add_subdirectory(external/portaudio)
