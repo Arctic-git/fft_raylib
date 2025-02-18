@@ -15,6 +15,7 @@
 #include "FftProcessor.h"
 #include "draw.h"
 #include "imgui.h"
+#include "imgui_menu.h"
 #include "implot.h"
 #include "raylib.h"
 #include "raymath.h"
@@ -32,19 +33,21 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
-    int screenWidth = 400;
-    int screenHeight = 200;
+    int screenWidth = 800;
+    int screenHeight = 600;
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
     FftProcessor fftProcessor(WAVE_WIDTH, std::max(32768 / 2, WAVE_WIDTH) / WAVE_WIDTH);
     fftProcessor.updateWindow(1);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
+    FftPostprocessor* pps[] = {&fftPostprocessorConti};
+    const char* ppNames[] = {"+fftPostprocessorConti"};
 
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_UNDECORATED); //| FLAG_WINDOW_HIGHDPI);
-    InitWindow(screenWidth, screenHeight, "raylib-Extras [ImGui] example - Docking");
-    ClearWindowState(FLAG_WINDOW_RESIZABLE);
-    SetWindowState(FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE); // | FLAG_WINDOW_UNDECORATED); //| FLAG_WINDOW_HIGHDPI);
+    InitWindow(screenWidth, screenHeight, "fft_raylib");
+    // ClearWindowState(FLAG_WINDOW_RESIZABLE);
+    // SetWindowState(FLAG_WINDOW_RESIZABLE);
     // std::print("{} {} {}\n", GetCurrentMonitor(), GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
     SetWindowPosition(GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
 
@@ -87,13 +90,13 @@ int main(int argc, char* argv[]) {
     bool wave_fill = true;
     bool xy = true;
     bool fft = true;
+    bool fft_logspacing = true;
+    int fft_colormode = 0;
 
     while (!WindowShouldClose() && !(IsKeyDown(KEY_W) && (IsKeyDown(KEY_LEFT_SUPER) | IsKeyDown(KEY_LEFT_CONTROL)))) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
         if (IsKeyPressed(KEY_P)) pause ^= 1;
         if (IsKeyPressed(KEY_S)) settings ^= 1;
-        if (IsKeyPressed(KEY_B)) ToggleBorderlessWindowed();
-        if (IsKeyPressed(KEY_F)) ToggleFullscreen();
 
         iTime += GetFrameTime();
 
@@ -117,8 +120,9 @@ int main(int argc, char* argv[]) {
         //     EndShaderMode();
         // }
 
+        int freshSamples = 0;
         if (!pause) {
-            soundbuffer.getlr(l, r, WAVE_WIDTH);
+            freshSamples = soundbuffer.getlr(l, r, WAVE_WIDTH);
         }
 
         // UpdateTexture(texture_w, lu8);
@@ -147,7 +151,7 @@ int main(int argc, char* argv[]) {
                     w / 2 + h / 2 * ((float)l[i + 1]) * gain,
                     h / 2 + h / 2 * ((float)r[i + 1]) * gain,
                 };
-                DrawLineEx(v_1, v_2, 2, WHITE);
+                DrawLineEx(v_1, v_2, draw_line_width, WHITE);
                 // DrawCircleV(v_1, 1, WHITE);
             }
         }
@@ -155,7 +159,7 @@ int main(int argc, char* argv[]) {
         if (fft) {
             fftProcessor.process(l, r);
             fftPostprocessorConti.process(fftProcessor.getOutput());
-            fft_conti({0, h / 2, w, h / 2}, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline);
+            fft_conti({0, h / 2, w, h / 2}, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fft_logspacing, fft_colormode);
         }
 
         // UnloadShader(shader);
@@ -177,17 +181,54 @@ int main(int argc, char* argv[]) {
         if (settings) {
             rlImGuiBegin();
             ImGui::DockSpaceOverViewport(0, NULL, ImGuiDockNodeFlags_PassthruCentralNode);
-            ImGui::ShowDemoWindow();
-            ImPlot::ShowDemoWindow();
+            static bool imgui_ShowDemoWindow = 0, implot_ShowDemoWindow = 0;
+            if (imgui_ShowDemoWindow)
+                ImGui::ShowDemoWindow(&imgui_ShowDemoWindow);
+            if (implot_ShowDemoWindow)
+                ImPlot::ShowDemoWindow(&implot_ShowDemoWindow);
 
-            if (ImGui::Begin("Test Window")) {
-                ImGui::TextUnformatted("Another window");
-                ImGui::Checkbox("pause", &pause);
-                ImGui::Checkbox("wave", &wave);
-                ImGui::Checkbox("wave_outline", &wave_outline);
-                ImGui::Checkbox("wave_fill", &wave_fill);
-                ImGui::Checkbox("xy", &xy);
-                ImGui::Checkbox("fft", &fft);
+            if (ImGui::Begin("Settings")) {
+                draw_audiosource(audioSource);
+                if (ImGui::TreeNodeEx("Drawing", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
+                    ImGui::Checkbox("pause", &pause);
+                    ImGui::Checkbox("wave", &wave);
+                    ImGui::Checkbox("wave_outline", &wave_outline);
+                    ImGui::SameLine();
+                    ImGui::Checkbox("wave_fill", &wave_fill);
+                    ImGui::Checkbox("xy", &xy);
+                    ImGui::Checkbox("fft", &fft);
+                    ImGui::Checkbox("fft_logspacing", &fft_logspacing);
+                    ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
+                    ImGui::SliderFloat("draw_line_width", &draw_line_width, 0.1, 8, "%.1f", ImGuiSliderFlags_Logarithmic);
+
+                    int ppNr = 0;
+                    for (FftPostprocessor* pp : pps) {
+                        ImGuiTreeNodeFlags flag = ImGuiTreeNodeFlags_None;
+                        if (ppNames[ppNr][0] == '+') flag = ImGuiTreeNodeFlags_DefaultOpen;
+                        if (ImGui::TreeNodeEx(ppNames[ppNr] + 1, flag)) {
+                            ImGui::Text("OutputSize %d", (int)pp->getOutputSize());
+                            ImGui::SliderFloat("alphaUp", &pp->config.smoothing.alphaUp, 0, 1, "%.1f", ImGuiSliderFlags_None);
+                            ImGui::SliderFloat("alphaDn", &pp->config.smoothing.alphaDn, 0, 1, "%.1f", ImGuiSliderFlags_None);
+                            ImGui::SliderFloat("minDbClamp", &pp->config.smoothing.minDbClamp, -99, 0, "%.1f", ImGuiSliderFlags_None);
+                            ImGui::SliderFloat("decay", &pp->config.smoothing.decay, -0.0001f, 0.005f, "%.4f", ImGuiSliderFlags_None);
+                            ImGui::SliderInt("blurringPasses", &pp->config.smoothing.blurringPasses, 0, 20);
+
+                            ImGui::Checkbox("logbinning", (bool*)&pp->config.binning.logbinning);
+                            ImGui::Checkbox("removeBaselineOffset", (bool*)&pp->config.folding.removeBaselineOffset);
+                            ImGui::Checkbox("mag2db", (bool*)&pp->config.scaling.mag2db);
+
+                            ImGui::TreePop();
+                        }
+                        ppNr++;
+                    }
+                    ImGui::TreePop();
+                }
+                draw_window();
+                draw_perf(freshSamples);
+
+                ImGui::Separator();
+                ImGui::Checkbox("ImGui::ShowDemoWindow", &imgui_ShowDemoWindow);
+                ImGui::Checkbox("ImPlot::ShowDemoWindow", &implot_ShowDemoWindow);
             }
             ImGui::End();
             rlImGuiEnd();

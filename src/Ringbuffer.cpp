@@ -15,7 +15,7 @@ Ringbuffer::~Ringbuffer() {
     delete[] buffer;
 }
 
-void Ringbuffer::write(const Sample* samples, size_t count) {
+void Ringbuffer::write(const Sample* samples, size_t count, float gain) {
     mutex.lock();
 
     if (count > bufMaxCnt) {
@@ -25,7 +25,7 @@ void Ringbuffer::write(const Sample* samples, size_t count) {
     }
 
     for (int i = 0; i < count; i++) {
-        buffer[head] = samples[i];
+        buffer[head] = {samples[i].left * gain, samples[i].right * gain};
         head = (head + 1) % bufMaxCnt;
     }
 
@@ -33,48 +33,46 @@ void Ringbuffer::write(const Sample* samples, size_t count) {
 }
 
 // count = number of STEREO samples
-void Ringbuffer::writeFromInterleaved16(const int16_t* samples, size_t count) {
+void Ringbuffer::writeFromInterleaved16(const int16_t* samples, size_t count, float gain) {
     mutex.lock();
 
     for (int i = 0; i < count; i++) {
-        buffer[head].left = float(samples[i * 2]) / 32768.0;
-        buffer[head].right = float(samples[i * 2 + 1]) / 32768.0;
+        buffer[head].left = float(samples[i * 2]) / 32768.0 * gain;
+        buffer[head].right = float(samples[i * 2 + 1]) / 32768.0 * gain;
         head = (head + 1) % bufMaxCnt;
     }
 
     mutex.unlock();
 }
 
-void Ringbuffer::writeFromInterleavedFloat(const float* samples, size_t count) {
+void Ringbuffer::writeFromInterleavedFloat(const float* samples, size_t count, float gain) {
     mutex.lock();
 
     for (int i = 0; i < count; i++) {
-        buffer[head].left = float(samples[i * 2]);
-        buffer[head].right = float(samples[i * 2 + 1]);
+        buffer[head].left = float(samples[i * 2]) * gain;
+        buffer[head].right = float(samples[i * 2 + 1]) * gain;
         head = (head + 1) % bufMaxCnt;
     }
 
     mutex.unlock();
 }
 
-void Ringbuffer::writeFromMono16(const int16_t* samples, size_t count) {
+void Ringbuffer::writeFromMono16(const int16_t* samples, size_t count, float gain) {
     mutex.lock();
 
     for (int i = 0; i < count; i++) {
-        buffer[head].left = float(samples[i]) / 32768.0;
-        buffer[head].right = float(samples[i]) / 32768.0;
+        buffer[head].right = buffer[head].left = float(samples[i]) / 32768.0 * gain;
         head = (head + 1) % bufMaxCnt;
     }
 
     mutex.unlock();
 }
 
-void Ringbuffer::writeFromMonoFloat(const float* samples, size_t count) {
+void Ringbuffer::writeFromMonoFloat(const float* samples, size_t count, float gain) {
     mutex.lock();
 
     for (int i = 0; i < count; i++) {
-        buffer[head].left = float(samples[i]);
-        buffer[head].right = float(samples[i]);
+        buffer[head].right = buffer[head].left = float(samples[i]) * gain;
         head = (head + 1) % bufMaxCnt;
     }
 

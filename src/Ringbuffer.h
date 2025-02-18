@@ -15,11 +15,11 @@ public:
     Ringbuffer(size_t);
     ~Ringbuffer();
 
-    void write(const Sample* samples, size_t count);
-    void writeFromInterleaved16(const int16_t* samples, size_t count);
-    void writeFromInterleavedFloat(const float* samples, size_t count);
-    void writeFromMono16(const int16_t* samples, size_t count);
-    void writeFromMonoFloat(const float* samples, size_t count);
+    void write(const Sample* samples, size_t count, float gain = 1);
+    void writeFromInterleaved16(const int16_t* samples, size_t count, float gain = 1);
+    void writeFromInterleavedFloat(const float* samples, size_t count, float gain = 1);
+    void writeFromMono16(const int16_t* samples, size_t count, float gain = 1);
+    void writeFromMonoFloat(const float* samples, size_t count, float gain = 1);
     void get(Sample* samples, size_t count);
     int getlr(float* l, float* r, size_t count);
     int getlri8(int8_t* l, int8_t* r, size_t count);

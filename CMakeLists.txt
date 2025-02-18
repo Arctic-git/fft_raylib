@@ -23,7 +23,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/template.plist.in
 )
-# set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/)
+set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/)
 # set(EXE_PREFIX open -a)
 # set(EXE_PREFIX ./)
 endif()

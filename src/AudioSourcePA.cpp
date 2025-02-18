@@ -24,9 +24,9 @@ static int soundCallback(const void* inputBuffer, void* outputBuffer,
         }
     } else {
         if (userdata->channelsIn == 2)
-            userdata->ringbuffer->writeFromInterleavedFloat(in, framesPerBuffer);
+            userdata->ringbuffer->writeFromInterleavedFloat(in, framesPerBuffer, userdata->config->gain);
         else
-            userdata->ringbuffer->writeFromMonoFloat(in, framesPerBuffer);
+            userdata->ringbuffer->writeFromMonoFloat(in, framesPerBuffer, userdata->config->gain);
 
         if (userdata->config->enableLoopback) {
             //			memcpy(out, in, framesPerBuffer * sizeof(float) * 2);
@@ -168,7 +168,7 @@ int AudioSourcePA::openDevice(int input, int output, int samplerate) {
         return err;
     }
 
-    infoStr = "in: " + std::string(Pa_GetDeviceInfo(inputParameters.device)->name) + "  out: " + Pa_GetDeviceInfo(outputParameters.device)->name;
+    infoStr = "in: " + std::string(Pa_GetDeviceInfo(inputParameters.device)->name) + "  out: " + Pa_GetDeviceInfo(outputParameters.device)->name + "\n" + std::to_string(streamInfo->sampleRate) + " "+ std::to_string(streamInfo->inputLatency) + " " + std::to_string(streamInfo->outputLatency);
 
     printf("opened %s\n", infoStr.c_str());
 
@@ -202,6 +202,7 @@ const char* AudioSourcePA::getInfo() {
 int AudioSourcePA::scanDevices() {
     Pa_Terminate();
     Pa_Initialize();
+    infoStr = "closed";
 
     availableDevices.clear();
     availableInDevices.clear();

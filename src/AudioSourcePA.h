@@ -6,6 +6,7 @@
 #include <vector>
 
 typedef struct paAudioConfig_s {
+    float gain = 1;
     bool enableLoopback = 0;
     float gainLoopback = 0.8;
 } paAudioConfig_t;

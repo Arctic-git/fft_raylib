@@ -129,6 +129,32 @@ void DrawLineEx2(Vector2 startPos, Vector2 endPos, float thick, Color color) {
     }
 }
 
+void DrawLineExDualcolor(Vector2 startPos, Vector2 endPos, float thick, Color color, Color color2) {
+    Vector2 delta = {endPos.x - startPos.x, endPos.y - startPos.y};
+    float length = sqrtf(delta.x * delta.x + delta.y * delta.y);
+
+    if ((length > 0) && (thick > 0)) {
+        float scale = thick / (2 * length);
+
+        Vector2 radius = {-scale * delta.y, scale * delta.x};
+        Vector2 strip[4] = {
+            {startPos.x - radius.x, startPos.y - radius.y},
+            {startPos.x + radius.x, startPos.y + radius.y},
+            {endPos.x - radius.x, endPos.y - radius.y},
+            {endPos.x + radius.x, endPos.y + radius.y}};
+
+        rlBegin(RL_QUADS);
+        rlNormal3f(0.0f, 0.0f, 1.0f);
+        rlColor4ub(color.r, color.g, color.b, color.a);
+        rlVertex2f(strip[0].x, strip[0].y);
+        rlVertex2f(strip[1].x, strip[1].y);
+        rlColor4ub(color2.r, color2.g, color2.b, color2.a);
+        rlVertex2f(strip[3].x, strip[3].y);
+        rlVertex2f(strip[2].x, strip[2].y);
+        rlEnd();
+    }
+}
+
 // expand all corners outwards
 // x---------x
 // |  -----  |
