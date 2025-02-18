@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30)
 
-project (app)
+project (fft_raylib)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -13,6 +13,20 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.c")
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE)
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
+
+if(APPLE)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    MACOSX_BUNDLE True
+    MACOSX_BUNDLE_GUI_IDENTIFIER my.domain.style.identifier.main
+    MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
+    MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/template.plist.in
+)
+# set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/)
+# set(EXE_PREFIX open -a)
+# set(EXE_PREFIX ./)
+endif()
 
 # raylib
 # find_package(raylib REQUIRED)
@@ -41,6 +55,7 @@ target_link_libraries(ImGui PRIVATE raylib)
 target_link_libraries(${PROJECT_NAME} PRIVATE ImGui)
 
 # portaudio
+option(PA_BUILD_SHARED_LIBS OFF)
 add_subdirectory(external/portaudio)
 target_link_libraries(${PROJECT_NAME} PRIVATE portaudio)
 
@@ -53,7 +68,7 @@ add_subdirectory(external/kissfft)
 target_link_libraries(${PROJECT_NAME} PRIVATE kissfft)
 
 add_custom_target(run
-    COMMAND ${PROJECT_NAME}
+    COMMAND ${EXE_PREFIX}${PROJECT_NAME}
     DEPENDS ${PROJECT_NAME}
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

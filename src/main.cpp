@@ -33,7 +33,7 @@ namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
     int screenWidth = 400;
-    int screenHeight = 300;
+    int screenHeight = 200;
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
@@ -41,8 +41,13 @@ int main(int argc, char* argv[]) {
     fftProcessor.updateWindow(1);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
 
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE); //| FLAG_WINDOW_HIGHDPI);
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_UNDECORATED); //| FLAG_WINDOW_HIGHDPI);
     InitWindow(screenWidth, screenHeight, "raylib-Extras [ImGui] example - Docking");
+    ClearWindowState(FLAG_WINDOW_RESIZABLE);
+    SetWindowState(FLAG_WINDOW_RESIZABLE);
+    // std::print("{} {} {}\n", GetCurrentMonitor(), GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
+    SetWindowPosition(GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
+
     SetTargetFPS(60);
     rlImGuiSetup(true);
     ImPlot::CreateContext();
@@ -89,6 +94,7 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_S)) settings ^= 1;
         if (IsKeyPressed(KEY_B)) ToggleBorderlessWindowed();
         if (IsKeyPressed(KEY_F)) ToggleFullscreen();
+
         iTime += GetFrameTime();
 
         BeginDrawing();
