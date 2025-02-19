@@ -3,7 +3,7 @@
 
 #include "AudioSourcePA.h"
 
-void draw_window();
+void draw_window(int argc, char* argv[]);
 void draw_perf(int freshSamples);
 void draw_audiosource(AudioSourcePA& audioSource);
 

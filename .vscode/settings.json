@@ -61,6 +61,8 @@
         "variant": "cpp",
         "vector": "cpp",
         "list": "cpp",
-        "*.m": "cpp"
+        "*.m": "cpp",
+        "__tree": "cpp",
+        "map": "cpp"
     }
 }

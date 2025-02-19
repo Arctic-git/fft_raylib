@@ -3,8 +3,29 @@
 #include "imguiDrawables/FPSGraph.h"
 #include "raylib.h"
 
-void draw_window() {
+void static_checkbox(const char* label, bool val){
+    ImGui::Checkbox(label, &val);
+}
+
+void draw_window(int argc, char* argv[]) {
+
     if (ImGui::TreeNodeEx("Window", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
+
+        ImGui::Text("%s", GetWorkingDirectory());
+        for (int i = 0; i < argc; i++) {
+            ImGui::Text("%s", argv[i]);
+        }
+        ImGui::Separator();
+
+        static_checkbox("IsWindowFullscreen", IsWindowFullscreen());
+        static_checkbox("IsWindowHidden", IsWindowHidden());
+        static_checkbox("IsWindowMinimized", IsWindowMinimized());
+        static_checkbox("IsWindowMaximized", IsWindowMaximized());
+        static_checkbox("IsWindowFocused", IsWindowFocused());
+        static_checkbox("IsWindowResized", IsWindowResized());
+
+        ImGui::Separator();
+
 
         int vsync = IsWindowState(FLAG_VSYNC_HINT);
         if (ImGui::Checkbox("vsync", (bool*)&vsync)) {
@@ -59,7 +80,11 @@ void draw_window() {
             SetWindowPosition(pos.x, pos.y);
         }
         ImGui::Button("Drag Me");
-        if (ImGui::IsItemActive()){
+        Vector2 size = {(float)GetScreenWidth(), (float)GetScreenHeight()};
+        if (ImGui::DragFloat2("size", (float*)&size)) {
+            SetWindowSize(size.x, size.y);
+        }
+        if (ImGui::IsItemActive()) {
             pos.x += ImGui::GetIO().MouseDelta.x;
             pos.y += ImGui::GetIO().MouseDelta.y;
             SetWindowPosition(pos.x, pos.y);
@@ -130,7 +155,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
             ImGui::EndCombo();
         }
         ImGui::SliderFloat("gain", &audioSource.config.gain, 0, 30, "%.1f", ImGuiSliderFlags_Logarithmic);
-        ImGui::SliderFloat("gainLoopback", &audioSource.config.gainLoopback, 0, 2, "%.1f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("gainLoopback", &audioSource.config.gainLoopback, 0.01, 2, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::TreePop();
     }
 }

@@ -10,9 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # project sources
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.c") 
-add_executable(${PROJECT_NAME} ${SOURCES})
+file(GLOB_RECURSE resource_files CONFIGURE_DEPENDS "resources/*")
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${resource_files})
 target_include_directories(${PROJECT_NAME} PRIVATE)
-target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/") # doesn't work for bundle!
 
 if(APPLE)
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -22,6 +24,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/template.plist.in
+    RESOURCE "${resource_files}"
 )
 set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/)
 # set(EXE_PREFIX open -a)

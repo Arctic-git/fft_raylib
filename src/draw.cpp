@@ -45,15 +45,15 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
                 b.y + b.height * 0.5f,
             };
             Vector2 v2 = {
-                (float)i / (wavebins - 1) * b.width,
+                b.x + (float)i / (wavebins - 1) * b.width,
                 b.y + b.height * ((float)lwmax[i] / 2 + 0.5f),
             };
             Vector2 v3 = {
-                (float)(i + 1) / (wavebins - 1) * b.width,
+                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
                 b.y + b.height * ((float)lwmax[i + 1] / 2 + 0.5f),
             };
             Vector2 v4 = {
-                (float)(i + 1) / (wavebins - 1) * b.width,
+                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
                 b.y + b.height * 0.5f,
             };
 
@@ -79,15 +79,15 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
                 b.y + b.height * ((float)lwmin[i] / 2 + 0.5f),
             };
             Vector2 v2 = {
-                (float)i / (wavebins - 1) * b.width,
+                b.x + (float)i / (wavebins - 1) * b.width,
                 b.y + b.height * ((float)lwmax[i] / 2 + 0.5f),
             };
             Vector2 v3 = {
-                (float)(i + 1) / (wavebins - 1) * b.width,
+                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
                 b.y + b.height * ((float)lwmax[i + 1] / 2 + 0.5f),
             };
             Vector2 v4 = {
-                (float)(i + 1) / (wavebins - 1) * b.width,
+                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
                 b.y + b.height * ((float)lwmin[i + 1] / 2 + 0.5f),
             };
 
@@ -267,9 +267,7 @@ static const char* freqToNote(float freq) {
     return midiToNote(midiNote);
 }
 
-void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode) {
-    float min = -66;
-    float max = -12;
+void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min, float max) {
     float bw = float(44100 / 2) / (samples - 1);
 
     if (wave_fill) {
@@ -280,9 +278,13 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
 
             fn = std::max(0.f, fn);
             fn_1 = std::max(0.f, fn_1);
+            // fn = std::min(1.f, fn);
+            // fn_1 = std::min(1.f, fn_1);
 
             float relativex = FftPostprocessor::freqToX(i * bw, 22, 22050, logspacing);
             float relativex_1 = FftPostprocessor::freqToX((i + 1) * bw, 22, 22050, logspacing);
+            if (relativex_1 < 0)
+                continue;
 
             Vector2 v1 = {
                 b.x + b.width * relativex,
@@ -303,14 +305,14 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
 
             // Color color = WHITE;
             Color color = fftColor(relativex_1, (i + 1) * bw, colormode);
-            rlColor4ub(color.r, color.g, color.b, std::max(0.0f, (-255 + 255 * fn_1)));
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn_1)))); //-255 + 255*fn_1
             rlVertex2f(v4.x, v4.y);
             rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn_1)));
             rlVertex2f(v3.x, v3.y);
             color = fftColor(relativex, i * bw, colormode);
             rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn)));
             rlVertex2f(v2.x, v2.y);
-            rlColor4ub(color.r, color.g, color.b, std::max(0.0f, (-255 + 255 * fn)));
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn))));
             rlVertex2f(v1.x, v1.y);
         }
         rlEnd();
@@ -325,6 +327,8 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
 
             float relativex = FftPostprocessor::freqToX(i * bw, 22, 22050, logspacing);
             float relativex_1 = FftPostprocessor::freqToX((i + 1) * bw, 22, 22050, logspacing);
+            if (relativex_1 < 0)
+                continue;
 
             Vector2 v_1 = {
                 b.x + b.width * relativex,

@@ -29,6 +29,7 @@
 
 #define SAMPLERATE (44100)
 #define WAVE_WIDTH (1024 * 2)
+#define SP_RECT(b) b.x, b.y, b.width, b.height
 
 namespace fs = std::filesystem;
 
@@ -41,6 +42,7 @@ int main(int argc, char* argv[]) {
     FftProcessor fftProcessor(WAVE_WIDTH, std::max(32768 / 2, WAVE_WIDTH) / WAVE_WIDTH);
     fftProcessor.updateWindow(1);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
+    fftPostprocessorConti.config.smoothing.alphaDn = fftPostprocessorConti.config.smoothing.alphaUp = 0.2;
     FftPostprocessor* pps[] = {&fftPostprocessorConti};
     const char* ppNames[] = {"+fftPostprocessorConti"};
 
@@ -86,6 +88,7 @@ int main(int argc, char* argv[]) {
     bool settings = false;
 
     bool wave = true;
+    bool windowed = false;
     bool wave_outline = true;
     bool wave_fill = true;
     bool xy = true;
@@ -98,16 +101,16 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_P)) pause ^= 1;
         if (IsKeyPressed(KEY_S)) settings ^= 1;
 
+        int freshSamples = 0;
+        if (!pause) {
+            freshSamples = soundbuffer.getlr(l, r, WAVE_WIDTH);
+        }
+
         iTime += GetFrameTime();
-
         BeginDrawing();
-
-        // ClearBackground(DARKGRAY);
-        // DrawCircle(GetScreenWidth() / 2, GetScreenHeight() / 2, GetScreenHeight() * 0.45f, DARKGREEN);
         ClearBackground(BLACK);
+        // float w = GetScreenWidth(), h = GetScreenHeight();
 
-        float w = GetScreenWidth();
-        float h = GetScreenHeight();
         // UnloadShader(shader);
         // shader = LoadShader(PATH_RESOURCES "custom.vs", PATH_RESOURCES "custom.fs");
         // if (IsShaderValid(shader)) {
@@ -120,11 +123,6 @@ int main(int argc, char* argv[]) {
         //     EndShaderMode();
         // }
 
-        int freshSamples = 0;
-        if (!pause) {
-            freshSamples = soundbuffer.getlr(l, r, WAVE_WIDTH);
-        }
-
         // UpdateTexture(texture_w, lu8);
         // Shader shader_wave = LoadShader(0, PATH_RESOURCES "wave.fs");
         // if (IsShaderValid(shader_wave)) {
@@ -133,34 +131,6 @@ int main(int argc, char* argv[]) {
         //     EndShaderMode();
         // }
         // UnloadShader(shader_wave);
-
-        if (wave) {
-            rlDisableBackfaceCulling();
-            wave_line({0, 0, w, h / 4}, l, WAVE_WIDTH, w, wave_fill, wave_outline);
-            wave_line({0, h / 8, w, h / 4}, r, WAVE_WIDTH, w, wave_fill, wave_outline);
-        }
-
-        if (xy) {
-            float gain = 1;
-            for (int i = 0; i < WAVE_WIDTH - 1; i++) {
-                Vector2 v_1 = {
-                    w / 2 + h / 2 * ((float)l[i]) * gain,
-                    h / 2 + h / 2 * ((float)r[i]) * gain,
-                };
-                Vector2 v_2 = {
-                    w / 2 + h / 2 * ((float)l[i + 1]) * gain,
-                    h / 2 + h / 2 * ((float)r[i + 1]) * gain,
-                };
-                DrawLineEx(v_1, v_2, draw_line_width, WHITE);
-                // DrawCircleV(v_1, 1, WHITE);
-            }
-        }
-
-        if (fft) {
-            fftProcessor.process(l, r);
-            fftPostprocessorConti.process(fftProcessor.getOutput());
-            fft_conti({0, h / 2, w, h / 2}, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fft_logspacing, fft_colormode);
-        }
 
         // UnloadShader(shader);
         // shader = LoadShader(0, PATH_RESOURCES "line.fs");
@@ -178,9 +148,88 @@ int main(int argc, char* argv[]) {
         // DrawLineEx({50, 50}, {100, 100}, 5, WHITE);
         // DrawLineEx({150, 150}, {250, 150}, 5, WHITE);
 
+        rlImGuiBegin();
+        ImGui::DockSpaceOverViewport(0, NULL, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_AutoHideTabBar);
+
+        if (wave) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::Begin("wave", &wave, 0);
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
+            Rectangle b1 = b;
+            b1.height /= 2;
+            Rectangle b2 = b;
+            b2.height /= 2;
+            b2.y += b2.height;
+
+            rlDisableBackfaceCulling();
+            BeginScissorMode(SP_RECT(b1));
+            wave_line(b1, l, WAVE_WIDTH, b1.width, wave_fill, wave_outline);
+            BeginScissorMode(SP_RECT(b2));
+            wave_line(b2, r, WAVE_WIDTH, b2.width, wave_fill, wave_outline);
+            EndScissorMode();
+            ImGui::End();
+        }
+
+        if (xy) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::Begin("xy", &xy, 0);
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
+            BeginScissorMode(SP_RECT(b));
+            for (int i = 0; i < WAVE_WIDTH - 1; i++) {
+                Vector2 v_1 = {
+                    b.x + b.width / 2 + b.width / 2 * l[i],
+                    b.y + b.height / 2 + b.height / 2 * r[i],
+                };
+                Vector2 v_2 = {
+                    b.x + b.width / 2 + b.width / 2 * l[i + 1],
+                    b.y + b.height / 2 + b.height / 2 * r[i + 1],
+                };
+                DrawLineEx(v_1, v_2, draw_line_width, WHITE);
+                // DrawCircleV(v_1, 1, WHITE);
+            }
+            EndScissorMode();
+            ImGui::End();
+        }
+
+        if (fft) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::Begin("fft", &fft, 0);
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
+
+            fftProcessor.process(l, r);
+            fftPostprocessorConti.process(fftProcessor.getOutput());
+            float fft_min = -66, fft_max = -12;
+            if (!fftPostprocessorConti.config.scaling.mag2db) {
+                fft_min = powf(10, fft_min / 20);
+                fft_max = powf(10, fft_max / 20) / 2;
+            }
+            BeginScissorMode(SP_RECT(b));
+            fft_conti(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fft_logspacing, fft_colormode, fft_min, fft_max);
+            EndScissorMode();
+            ImGui::End();
+        }
+
+        if (windowed) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::Begin("windowed", &windowed, 0);
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
+
+            rlDisableBackfaceCulling();
+            BeginScissorMode(SP_RECT(b));
+            wave_line(b, fftProcessor.getTimeWindowed(), fftProcessor.getTimeSize(), b.width, wave_fill, wave_outline);
+            EndScissorMode();
+            ImGui::End();
+        }
+
         if (settings) {
-            rlImGuiBegin();
-            ImGui::DockSpaceOverViewport(0, NULL, ImGuiDockNodeFlags_PassthruCentralNode);
             static bool imgui_ShowDemoWindow = 0, implot_ShowDemoWindow = 0;
             if (imgui_ShowDemoWindow)
                 ImGui::ShowDemoWindow(&imgui_ShowDemoWindow);
@@ -188,6 +237,7 @@ int main(int argc, char* argv[]) {
                 ImPlot::ShowDemoWindow(&implot_ShowDemoWindow);
 
             if (ImGui::Begin("Settings")) {
+
                 draw_audiosource(audioSource);
                 if (ImGui::TreeNodeEx("Drawing", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
                     ImGui::Checkbox("pause", &pause);
@@ -195,6 +245,7 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("wave_outline", &wave_outline);
                     ImGui::SameLine();
                     ImGui::Checkbox("wave_fill", &wave_fill);
+                    ImGui::Checkbox("windowed", &windowed);
                     ImGui::Checkbox("xy", &xy);
                     ImGui::Checkbox("fft", &fft);
                     ImGui::Checkbox("fft_logspacing", &fft_logspacing);
@@ -223,7 +274,7 @@ int main(int argc, char* argv[]) {
                     }
                     ImGui::TreePop();
                 }
-                draw_window();
+                draw_window(argc, argv);
                 draw_perf(freshSamples);
 
                 ImGui::Separator();
@@ -231,10 +282,12 @@ int main(int argc, char* argv[]) {
                 ImGui::Checkbox("ImPlot::ShowDemoWindow", &implot_ShowDemoWindow);
             }
             ImGui::End();
-            rlImGuiEnd();
         }
 
-        DrawFPS(10, 10);
+        rlImGuiEnd();
+
+        if (settings)
+            DrawFPS(10, 10);
 
         EndDrawing();
     }
