@@ -1,0 +1,32 @@
+diff --git a/rlImGui.cpp b/rlImGui.cpp
+index 405e246..68f7864 100644
+--- a/rlImGui.cpp
++++ b/rlImGui.cpp
+@@ -250,11 +250,13 @@ void SetupFontAwesome(void)
+     ImGuiIO& io = ImGui::GetIO();
+ 
+     float size = FONT_AWESOME_ICON_SIZE;
++    #if !defined(__APPLE__)
+     if (!IsWindowState(FLAG_WINDOW_HIGHDPI))
+     {
+         size *= GetWindowScaleDPI().y;
+         icons_config.RasterizerMultiply = GetWindowScaleDPI().y;
+     }
++    #endif
+ 
+     io.Fonts->AddFontFromMemoryCompressedTTF((void*)fa_solid_900_compressed_data, fa_solid_900_compressed_size, size, &icons_config, icons_ranges);
+ #endif
+@@ -431,11 +433,13 @@ void rlImGuiBeginInitImGui(void)
+ 
+     defaultConfig.SizePixels = DefaultFonSize;
+ 
++    #if !defined(__APPLE__)
+ 	if (!IsWindowState(FLAG_WINDOW_HIGHDPI))
+ 	{
+         defaultConfig.SizePixels = ceilf(defaultConfig.SizePixels * GetWindowScaleDPI().y);
+         defaultConfig.RasterizerMultiply = GetWindowScaleDPI().y;
+ 	}
++    #endif
+ 
+     defaultConfig.PixelSnapH = true;
+     io.Fonts->AddFontDefault(&defaultConfig);
