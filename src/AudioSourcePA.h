@@ -5,6 +5,12 @@
 #include "portaudio.h"
 #include <vector>
 
+typedef struct {
+    std::string name;
+    int maxInputChannels;
+    int maxOutputChannels;
+} device_t;
+
 typedef struct paAudioConfig_s {
     float gain = 1;
     bool enableLoopback = 0;
@@ -30,8 +36,7 @@ public:
     int openDevice(int input, int output, int samplerate);
     int openDevice(const char* nameInput, const char* nameOutput, int samplerate);
     std::vector<std::string> getDeviceNames();
-    std::vector<std::string> getInDeviceNames();
-    std::vector<std::string> getOutDeviceNames();
+    std::vector<device_t> getDevices();
     void getCurrentDevice(int* input, int* output);
 
     paAudioConfig_t config;
@@ -43,9 +48,9 @@ private:
     std::string infoStr;
     size_t callbackCnt;
     paUserData_t userData;
-    std::vector<std::string> availableInDevices;
-    std::vector<std::string> availableOutDevices;
-    std::vector<std::string> availableDevices;
+    std::vector<std::string> availableDeviceNames;
+    std::vector<device_t> availableDevices;
+
     int currInput;
     int currOutput;
 };

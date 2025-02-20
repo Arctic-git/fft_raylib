@@ -3,7 +3,7 @@
 #include "imguiDrawables/FPSGraph.h"
 #include "raylib.h"
 
-void static_checkbox(const char* label, bool val){
+void static_checkbox(const char* label, bool val) {
     ImGui::Checkbox(label, &val);
 }
 
@@ -18,28 +18,25 @@ void draw_window(int argc, char* argv[]) {
         ImGui::Separator();
 
         static_checkbox("IsWindowFullscreen", IsWindowFullscreen());
-        static_checkbox("IsWindowHidden", IsWindowHidden());
+        ImGui::SameLine();
         static_checkbox("IsWindowMinimized", IsWindowMinimized());
+        ImGui::SameLine();
         static_checkbox("IsWindowMaximized", IsWindowMaximized());
+        static_checkbox("IsWindowHidden", IsWindowHidden());
+        ImGui::SameLine();
         static_checkbox("IsWindowFocused", IsWindowFocused());
+        ImGui::SameLine();
         static_checkbox("IsWindowResized", IsWindowResized());
 
         ImGui::Separator();
 
+        if (ImGui::Button("ToggleFullscreen")) ToggleFullscreen();
+        ImGui::SameLine();
+        if (ImGui::Button("ToggleBorderlessWindowed")) ToggleBorderlessWindowed();
+        if (ImGui::Button("MaximizeWindow")) MaximizeWindow();
+        ImGui::SameLine();
+        if (ImGui::Button("RestoreWindow")) RestoreWindow();
 
-        int vsync = IsWindowState(FLAG_VSYNC_HINT);
-        if (ImGui::Checkbox("vsync", (bool*)&vsync)) {
-            if (vsync)
-                SetWindowState(FLAG_VSYNC_HINT);
-            else
-                ClearWindowState(FLAG_VSYNC_HINT);
-        }
-        if (ImGui::Button("ToggleFullscreen"))
-            ToggleFullscreen();
-        if (ImGui::Button("ToggleBorderlessWindowed"))
-            ToggleBorderlessWindowed();
-        if (ImGui::Button("MaximizeWindow"))
-            MaximizeWindow();
         int resizable = IsWindowState(FLAG_WINDOW_RESIZABLE);
         if (ImGui::Checkbox("resizable", (bool*)&resizable)) {
             if (resizable)
@@ -69,12 +66,6 @@ void draw_window(int argc, char* argv[]) {
                 ClearWindowState(FLAG_WINDOW_ALWAYS_RUN);
         }
 
-        const char* items[] = {"LOG_ALL", "LOG_TRACE", "LOG_DEBUG", "LOG_INFO", "LOG_WARNING", "LOG_ERROR", "LOG_FATAL", "LOG_NONE"};
-        static int item_current = LOG_INFO;
-        if (ImGui::Combo("combo", &item_current, items, IM_ARRAYSIZE(items))) {
-            SetTraceLogLevel(item_current);
-        }
-
         Vector2 pos = GetWindowPosition();
         if (ImGui::DragFloat2("pos", (float*)&pos)) {
             SetWindowPosition(pos.x, pos.y);
@@ -90,9 +81,22 @@ void draw_window(int argc, char* argv[]) {
             SetWindowPosition(pos.x, pos.y);
         }
 
+        int vsync = IsWindowState(FLAG_VSYNC_HINT);
+        if (ImGui::Checkbox("vsync", (bool*)&vsync)) {
+            if (vsync)
+                SetWindowState(FLAG_VSYNC_HINT);
+            else
+                ClearWindowState(FLAG_VSYNC_HINT);
+        }
         static int target_fps = 60;
         if (ImGui::SliderInt("Target Fps", &target_fps, 0, 120))
             SetTargetFPS(target_fps);
+
+        const char* items[] = {"LOG_ALL", "LOG_TRACE", "LOG_DEBUG", "LOG_INFO", "LOG_WARNING", "LOG_ERROR", "LOG_FATAL", "LOG_NONE"};
+        static int item_current = LOG_INFO;
+        if (ImGui::Combo("LogLevel", &item_current, items, IM_ARRAYSIZE(items))) {
+            SetTraceLogLevel(item_current);
+        }
 
         ImGui::TreePop();
     }
@@ -116,7 +120,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
 
     if (ImGui::TreeNodeEx("audioSoruce", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
         ImGui::Text("%s", audioSource.getInfo());
-        auto deviceNames = audioSource.getDeviceNames();
+        auto devices = audioSource.getDevices();
         if (ImGui::Button("scanDevices")) {
             audioSource.scanDevices();
         }
@@ -126,10 +130,11 @@ void draw_audiosource(AudioSourcePA& audioSource) {
         }
         ImGui::SameLine();
         ImGui::Checkbox("enableLoopback", (bool*)&audioSource.config.enableLoopback);
-        if (ImGui::BeginCombo("input", deviceNames[selectedInputDevice].c_str())) {
-            for (int n = 0; n < deviceNames.size(); n++) {
+        if (ImGui::BeginCombo("input", devices[selectedInputDevice].name.c_str())) {
+            for (int n = 0; n < devices.size(); n++) {
+                if (devices[n].maxInputChannels == 0) continue;
                 const bool is_selected = (selectedInputDevice == n);
-                if (ImGui::Selectable(deviceNames[n].c_str(), is_selected)) {
+                if (ImGui::Selectable(devices[n].name.c_str(), is_selected)) {
                     selectedInputDevice = n;
                     audioSource.openDevice(selectedInputDevice, selectedOutputDevice, 44100);
                 }
@@ -140,10 +145,11 @@ void draw_audiosource(AudioSourcePA& audioSource) {
             }
             ImGui::EndCombo();
         }
-        if (ImGui::BeginCombo("output", deviceNames[selectedOutputDevice].c_str())) {
-            for (int n = 0; n < deviceNames.size(); n++) {
+        if (ImGui::BeginCombo("output", devices[selectedOutputDevice].name.c_str())) {
+            for (int n = 0; n < devices.size(); n++) {
+                if (devices[n].maxOutputChannels == 0) continue;
                 const bool is_selected = (selectedOutputDevice == n);
-                if (ImGui::Selectable(deviceNames[n].c_str(), is_selected)) {
+                if (ImGui::Selectable(devices[n].name.c_str(), is_selected)) {
                     selectedOutputDevice = n;
                     audioSource.openDevice(selectedInputDevice, selectedOutputDevice, 44100);
                 }

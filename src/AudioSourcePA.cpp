@@ -179,7 +179,7 @@ int AudioSourcePA::openDevice(const char* nameInput, const char* nameOutput, int
     int input = -1, output = -1;
 
     int num = 0;
-    for (std::string name : availableDevices) {
+    for (std::string name : availableDeviceNames) {
         if (name == std::string(nameInput)) {
             input = num;
         }
@@ -204,9 +204,8 @@ int AudioSourcePA::scanDevices() {
     Pa_Initialize();
     infoStr = "closed";
 
+    availableDeviceNames.clear();
     availableDevices.clear();
-    availableInDevices.clear();
-    availableOutDevices.clear();
 
     int numDevices = Pa_GetDeviceCount();
     if (numDevices < 0) {
@@ -223,25 +222,21 @@ int AudioSourcePA::scanDevices() {
         if (i == Pa_GetDefaultInputDevice()) printf("Default Input ");
         printf("\n");
 
-        availableDevices.push_back(name);
-        if (deviceInfo->maxInputChannels) availableInDevices.push_back(name);
-        if (deviceInfo->maxOutputChannels) availableOutDevices.push_back(name);
+        availableDeviceNames.push_back(name);
+        availableDevices.push_back({name, deviceInfo->maxInputChannels, deviceInfo->maxOutputChannels});
     }
 
     return 0;
 }
 
 std::vector<std::string> AudioSourcePA::getDeviceNames() {
+    return availableDeviceNames;
+}
+
+std::vector<device_t> AudioSourcePA::getDevices() {
     return availableDevices;
 }
 
-std::vector<std::string> AudioSourcePA::getInDeviceNames() {
-    return availableInDevices;
-}
-
-std::vector<std::string> AudioSourcePA::getOutDeviceNames() {
-    return availableOutDevices;
-}
 
 void AudioSourcePA::getCurrentDevice(int* input, int* output) {
     *input = currInput;
