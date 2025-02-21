@@ -505,7 +505,7 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
     draw_mouse_overlay(b, logspacing);
 }
 
-void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, float min, float max) {
+void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, bool bin_avgmode, float min, float max) {
     if (b.width <= 0 || b.height <= 0) return;
 
     if (!shader.id) {
@@ -567,13 +567,17 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing
             float a = (x_rel - x_rel_left) / (x_rel_right - x_rel_left);
             f_interp = f_left * (1 - a) + f_right * a;
         } else {
-            float fn_max = -10000;
+            float fn_max = f[bin];
+            float fn_avg =0;
             for (int i = 0; i < num_bins; i++) {
-                float val = f[bin + 1];
+                float val = f[bin + i];
                 if (val > fn_max)
                     fn_max = val;
+                fn_avg += val / num_bins;
             }
             f_interp = fn_max;
+            if (bin_avgmode)
+                f_interp = fn_avg;
         }
 
         float fn = (f_interp - min) / (max - min); // convert range to [0,1]

@@ -30,12 +30,31 @@
 #define SAMPLERATE (44100)
 #define WAVE_WIDTH (1024 * 2)
 #define SP_RECT(b) b.x, b.y, b.width, b.height
-static int screenWidth = 800;
-static int screenHeight = 600;
+static int screenWidth = 1200;
+static int screenHeight = 1000;
 int target_fps = 80;
 
 namespace fs = std::filesystem;
 fs::path path_res;
+
+static std::string system_capture(const std::string& cmd) {
+    std::array<char, 128> buffer;
+    std::string std_output;
+
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
+        std_output += buffer.data();
+    }
+
+    int exit_status = pclose(pipe);
+    if (exit_status)
+        throw std::system_error(exit_status, std::generic_category(), "HwManagerBeaglewire system_capture '" + cmd + "' error");
+
+    return std_output;
+}
 
 int main(int argc, char* argv[]) {
     path_res = fs::path(GetApplicationDirectory()).append(PATH_RESOURCES_REL);
@@ -43,6 +62,19 @@ int main(int argc, char* argv[]) {
     if (!DirectoryExists(path_res.c_str())) {
         TraceLog(LOG_ERROR, "Resource path does not exist! '%s'", path_res.c_str());
     }
+
+    // Image icon = LoadImage(fs::path(path_res).append("icon3.png").c_str());
+    // SetWindowIcon(icon);s
+
+    fs::path path_settings;
+#if defined(PATH_SETTINGS_BASH)
+    path_settings = system_capture("bash -c \"echo -n " + std::string(PATH_SETTINGS_BASH) + "\"");
+    MakeDirectory(path_settings.c_str());
+#else
+    path_settings = "."
+#endif
+    TraceLog(LOG_INFO, "path_settings '%s'", path_settings.c_str());
+
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
@@ -63,9 +95,12 @@ int main(int argc, char* argv[]) {
     // std::print("{} {} {}\n", GetCurrentMonitor(), GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
     SetWindowPosition(GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
 
+    target_fps = GetMonitorRefreshRate(GetCurrentMonitor());
     SetTargetFPS(target_fps);
     rlImGuiSetup(true);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    fs::path path_imgui = fs::path(path_settings).append("imgui.ini").c_str();
+    ImGui::GetIO().IniFilename = path_imgui.c_str();
     ImPlot::CreateContext();
 
     Shader shader = LoadShader(fs::path(path_res).append("custom.vs").c_str(), fs::path(path_res).append("custom.fs").c_str());
@@ -102,6 +137,7 @@ int main(int argc, char* argv[]) {
     int fft_colormode = 0;
     bool fftscroll = true;
     bool fftscroll_lerp = true;
+    bool fftscroll_avg = true;
 
     float l[WAVE_WIDTH], r[WAVE_WIDTH];
 
@@ -112,6 +148,10 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
         if (IsKeyPressed(KEY_P)) pause ^= 1;
         if (IsKeyPressed(KEY_S)) settings ^= 1;
+
+        if (IsWindowHidden()) {
+            WaitTime(4);
+        }
 
         int freshSamples = 0;
         if (!pause) {
@@ -236,7 +276,7 @@ int main(int argc, char* argv[]) {
             }
 
             // BeginScissorMode(SP_RECT(b));
-            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fft_logspacing, wavescroll_colorscale, fftscroll_lerp, wavescroll_scroll, my_fft_min, my_fft_max);
+            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fft_logspacing, wavescroll_colorscale, fftscroll_lerp, wavescroll_scroll, fftscroll_avg, my_fft_min, my_fft_max);
             // EndScissorMode();
             ImGui::End();
         }
@@ -292,6 +332,8 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("fftscroll", &fftscroll);
                     ImGui::SameLine();
                     ImGui::Checkbox("fftscroll_lerp", &fftscroll_lerp);
+                    ImGui::SameLine();
+                    ImGui::Checkbox("fftscroll_avg", &fftscroll_avg);
                     ImGui::Checkbox("fft_logspacing", &fft_logspacing);
                     ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
                     ImGui::SliderInt("wavescroll_colorscale", &wavescroll_colorscale, 0, 14);

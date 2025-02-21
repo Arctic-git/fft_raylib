@@ -23,7 +23,7 @@ private:
 class fft_scrolltexture {
 public:
     fft_scrolltexture() = default;
-    void draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, float min = -66, float max = -12);
+    void draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, bool bin_avgmode, float min = -66, float max = -12);
 
 private:
     int y = 1;

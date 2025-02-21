@@ -23,12 +23,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION "0.1"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
     MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/template.plist.in
+    MACOSX_BUNDLE_ICON_FILE ../Resources/icon3.png
     RESOURCE "${resource_files}"
 )
-set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/)
-# set(EXE_PREFIX open -a)
+# set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/) # misspelled intentionally. launches in non-package mode
+# set(EXE_PREFIX ./${PROJECT_NAME}.app/Contents/MacOS/) 
+set(EXE_PREFIX open -a)
 # set(EXE_PREFIX ./)
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="../Resources")
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_SETTINGS_BASH="$HOME/Library/Application Support/${PROJECT_NAME}")
 else()
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="resources") 
 endif()

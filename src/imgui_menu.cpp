@@ -3,6 +3,8 @@
 #include "imguiDrawables/FPSGraph.h"
 #include "raylib.h"
 
+#define SP_V2(v) v.x, v.y
+
 extern int target_fps;
 
 void static_checkbox(const char* label, bool val) {
@@ -13,12 +15,31 @@ void draw_window(int argc, char* argv[]) {
 
     if (ImGui::TreeNodeEx("Window", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
 
+        ImGui::SeparatorText("Executable");
+
         ImGui::Text("%s", GetWorkingDirectory());
         ImGui::Text("%s", GetApplicationDirectory());
         for (int i = 0; i < argc; i++) {
             ImGui::Text("%s", argv[i]);
         }
-        ImGui::Separator();
+
+        ImGui::SeparatorText("Monitors");
+
+        int monitors = GetMonitorCount();
+        int cur = GetCurrentMonitor();
+        for (int i = 0; i < monitors; i++) {
+            if (ImGui::TreeNode(TextFormat("%s %s", GetMonitorName(i), cur == i ? "(current)" : ""))) {
+                ImGui::BulletText("%.1f %.1f %dx%d %dx%d %d", SP_V2(GetMonitorPosition(i)), GetMonitorWidth(i), GetMonitorHeight(i), GetMonitorPhysicalWidth(i), GetMonitorPhysicalHeight(i), GetMonitorRefreshRate(i));
+                ImGui::TreePop();
+            }
+        }
+
+        ImGui::SeparatorText("Screen");
+        ImGui::Text("size %d x %d", GetScreenWidth(), GetScreenHeight());
+        ImGui::Text("render size %d x %d", GetRenderWidth(), GetRenderHeight());
+
+        ImGui::SeparatorText("Window");
+        ImGui::Text("scale dpi %.1f x %.1f", SP_V2(GetWindowScaleDPI()));
 
         static_checkbox("IsWindowFullscreen", IsWindowFullscreen());
         ImGui::SameLine();
@@ -93,6 +114,11 @@ void draw_window(int argc, char* argv[]) {
         }
         if (ImGui::SliderInt("Target Fps", &target_fps, 0, 120))
             SetTargetFPS(target_fps);
+
+        static float opacity = 1;
+        if (ImGui::SliderFloat("opacity", &opacity, 0, 1)) {
+            SetWindowOpacity(opacity);
+        }
 
         const char* items[] = {"LOG_ALL", "LOG_TRACE", "LOG_DEBUG", "LOG_INFO", "LOG_WARNING", "LOG_ERROR", "LOG_FATAL", "LOG_NONE"};
         static int item_current = LOG_INFO;
