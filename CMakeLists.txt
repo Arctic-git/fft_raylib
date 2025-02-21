@@ -14,7 +14,6 @@ file(GLOB_RECURSE resource_files CONFIGURE_DEPENDS "resources/*")
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${resource_files})
 target_include_directories(${PROJECT_NAME} PRIVATE)
-target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES="${CMAKE_CURRENT_SOURCE_DIR}/resources/") # doesn't work for bundle!
 
 if(APPLE)
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -29,6 +28,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/)
 # set(EXE_PREFIX open -a)
 # set(EXE_PREFIX ./)
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="../Resources")
+else()
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="resources") 
 endif()
 
 # raylib

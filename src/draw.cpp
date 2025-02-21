@@ -3,13 +3,17 @@
 #include "raymath.h"
 #include "rlFixes.h"
 #include "rlgl.h"
+#include "tinycolormap.hpp"
 #include <algorithm>
+#include <filesystem>
 
 #define WAVE_WIDTH_MAX (1024 * 16)
 float lwmin_buf[WAVE_WIDTH_MAX];
 float lwmax_buf[WAVE_WIDTH_MAX];
 
 float draw_line_width = 1.5;
+namespace fs = std::filesystem;
+extern fs::path path_res;
 
 void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill, bool wave_outline) {
     int rpos = 0;
@@ -129,6 +133,121 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
             DrawLineEx(v_1, v_2, draw_line_width, WHITE);
             // DrawCircleV(v_1, 1, WHITE);
         }
+    }
+}
+
+Color lerp_color(Color c0, Color c1, float x) {
+    Color c = {
+        .r = (unsigned char)(c0.r * (1 - x) + c1.r * (x)),
+        .g = (unsigned char)(c0.g * (1 - x) + c1.g * (x)),
+        .b = (unsigned char)(c0.b * (1 - x) + c1.b * (x)),
+        .a = (unsigned char)(c0.a * (1 - x) + c1.a * (x)),
+    };
+    return c;
+}
+
+void wave_scrolltexture::draw(Rectangle b, float* l, int samples, bool scroll) {
+    if (b.width <= 0 || b.height <= 0) return;
+
+    if (!shader.id) {
+        shader = LoadShader(NULL, fs::path(path_res).append("scroll.fs").c_str());
+        xScrollOffs_location = GetShaderLocation(shader, "xScrollOffs");
+        yScrollOffs_location = GetShaderLocation(shader, "yScrollOffs");
+    }
+
+    int width = std::ceilf(b.width);
+    int height = std::ceilf(b.height);
+    if (!img.data || width != img.width || height != img.height) {
+        if (!img.data) {
+            // create image
+            img.data = (uint8_t*)malloc(width * height * 3);
+            img.width = width;
+            img.height = height;
+        } else {
+            int old_width = img.width;
+            ImageResize(&img, width, height);
+            x = ceil((float)width / old_width * x);
+        }
+
+        data_update = (uint8_t*)realloc(data_update, height * 3);
+        // memset(data, 155, texture.width * texture.height * 3);
+
+        UnloadTexture(texture);
+        texture = LoadTextureFromImage(img);
+        SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+        // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+    }
+
+    float max = l[0];
+    float min = l[0];
+    float squaresum = 0;
+    for (int i = 0; i < samples; i++) {
+        float s = l[i];
+        if (s > max) max = s;
+        if (s < min) min = s;
+        squaresum += s * s;
+    }
+    float rms = sqrtf(squaresum / samples);
+    min = Clamp(min, -1, 1);
+    max = Clamp(max, -1, 1);
+    rms = Clamp(rms, -1, 1);
+
+    // Ableton meter colors 0 to 1
+    Color c0rms = {114, 248, 119, 255};
+    Color c1rms = {207, 247, 122, 255};
+    Color c0 = {64, 136, 74, 255};
+    Color c1 = {118, 137, 75, 255};
+    // above 1
+    Color c2rms = {234, 53, 39, 255};
+    Color c3rms = {118, 137, 75, 255};
+    Color c2 = {138, 116, 43, 255};
+    Color c3 = {129, 35, 29, 255};
+
+    x = (x + 1) % texture.width;
+    for (int y = 0; y < texture.height; y++) {
+        float y_rel = (float)y / (texture.height - 1) * 2 - 1; //-1 to 1
+        int r = 0, g = 0, b = 0;
+        Color c = {};
+
+        if (y_rel <= max && y_rel >= min) {
+            c = lerp_color(c0, c1, std::abs(y_rel));
+        }
+        if (std::abs(y_rel) <= rms) {
+            c = lerp_color(c0rms, c1rms, std::abs(y_rel));
+        }
+
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 0] = c.r;
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 1] = c.g;
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 2] = c.b;
+        data_update[y * 3 + 0] = c.r;
+        data_update[y * 3 + 1] = c.g;
+        data_update[y * 3 + 2] = c.b;
+    }
+
+    // UpdateTexture(texture, data);
+    UpdateTextureRec(texture, {(float)x, 0.0f, 1.0f, (float)texture.height}, data_update);
+
+    if (IsShaderValid(shader)) {
+        float xScrollOffs = scroll ? (float)(x + 1) / texture.width : 0;
+        SetShaderValue(shader, xScrollOffs_location, (void*)&xScrollOffs, SHADER_UNIFORM_FLOAT);
+        BeginShaderMode(shader);
+    }
+    DrawTexturePro(texture, {0, 0, (float)texture.width, (float)texture.height}, b, {0, 0}, 0, WHITE);
+    EndShaderMode();
+}
+
+void xy_line(Rectangle b, float* l, float* r, int samples) {
+    for (int i = 0; i < samples - 1; i++) {
+        Vector2 v_1 = {
+            b.x + b.width / 2 + b.width / 2 * l[i],
+            b.y + b.height / 2 + b.height / 2 * r[i],
+        };
+        Vector2 v_2 = {
+            b.x + b.width / 2 + b.width / 2 * l[i + 1],
+            b.y + b.height / 2 + b.height / 2 * r[i + 1],
+        };
+        DrawLineEx(v_1, v_2, draw_line_width, WHITE);
+        // DrawCircleV(v_1, 1, WHITE);
     }
 }
 
@@ -267,6 +386,38 @@ static const char* freqToNote(float freq) {
     return midiToNote(midiNote);
 }
 
+Color heatmap(float value, int colormode) {
+    const auto color = tinycolormap::GetColor(value, (tinycolormap::ColormapType)(colormode)); // 13 more
+    return Color(color.ri(), color.gi(), color.bi(), 255);
+}
+
+void draw_mouse_overlay(Rectangle b, bool logspacing) {
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        Vector2 mpr = GetMousePositionRelativeTo(b);
+        if (mpr.x > 0 && mpr.x < 1 && mpr.y > 0 && mpr.y < 1) {
+            float freq = FftPostprocessor::xToFreq(mpr.x, 22, 22050, logspacing);
+            // float amplitude = min + (1 - mpr.y) * (max - min); // data[int(round(bin))];
+            float midi = freqToMidi(freq);
+            float midiH = roundf(midi) + 0.5;
+            float midiL = roundf(midi) - 0.5;
+
+            float px_midiH = FftPostprocessor::freqToX(midiToFreq(midiH), 22, 22050, logspacing) * b.width + b.x;
+            float px_midiL = FftPostprocessor::freqToX(midiToFreq(midiL), 22, 22050, logspacing) * b.width + b.x;
+            DrawRectangle(px_midiL, b.y, px_midiH - px_midiL, b.height, {255, 255, 255, 32});
+            DrawLineEx({px_midiL, b.y}, {px_midiL, b.y + b.height}, draw_line_width, WHITE);
+            DrawLineEx({px_midiH, b.y}, {px_midiH, b.y + b.height}, draw_line_width, WHITE);
+
+            const char* note = midiToNote(midi);
+            int oct = midiToNoteOctave(midi);
+
+            DrawTextEx(GetFontDefault(), TextFormat("%.0f Hz %-2.2s%d\n", freq, note, oct),
+                       Vector2Add(GetMousePosition(), (Vector2){-44, -24}), 20, 2, {WHITE});
+            // DrawTextEx(GetFontDefault(), TextFormat("%-2.2s%d  %.0f Hz", note, oct, freq),
+            //            Vector2Add(GetMousePosition(), (Vector2){-44, -24}), 20, 2, {WHITE});
+        }
+    }
+}
+
 void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min, float max) {
     float bw = float(44100 / 2) / (samples - 1);
 
@@ -351,26 +502,101 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
         // DrawLineEx({b.x, b.y + b.height + 1}, {b.x + b.width, b.y + b.height + 1}, 2, BLACK);
     }
 
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        Vector2 mpr = GetMousePositionRelativeTo(b);
-        if (mpr.x > 0 && mpr.x < 1 && mpr.y > 0 && mpr.y < 1) {
-            float freq = FftPostprocessor::xToFreq(mpr.x, 22, 22050, logspacing);
-            float amplitude = min + (1 - mpr.y) * (max - min); // data[int(round(bin))];
-            float midi = freqToMidi(freq);
-            float midiH = roundf(midi) + 0.5;
-            float midiL = roundf(midi) - 0.5;
+    draw_mouse_overlay(b, logspacing);
+}
 
-            float px_midiH = FftPostprocessor::freqToX(midiToFreq(midiH), 22, 22050, logspacing) * b.width + b.x;
-            float px_midiL = FftPostprocessor::freqToX(midiToFreq(midiL), 22, 22050, logspacing) * b.width + b.x;
-            DrawRectangle(px_midiL, b.y, px_midiH - px_midiL, b.height, {255, 255, 255, 32});
-            DrawLineEx({px_midiL, b.y}, {px_midiL, b.y + b.height}, draw_line_width, WHITE);
-            DrawLineEx({px_midiH, b.y}, {px_midiH, b.y + b.height}, draw_line_width, WHITE);
+void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, float min, float max) {
+    if (b.width <= 0 || b.height <= 0) return;
 
-            const char* note = midiToNote(midi);
-            int oct = midiToNoteOctave(midi);
-
-            DrawTextEx(GetFontDefault(), TextFormat("%.0f Hz, %-2.2s%d", freq, note, oct),
-                       Vector2Add(GetMousePosition(), (Vector2){-44, -24}), 20, 2, {WHITE});
-        }
+    if (!shader.id) {
+        shader = LoadShader(NULL, fs::path(path_res).append("scroll.fs").c_str());
+        xScrollOffs_location = GetShaderLocation(shader, "xScrollOffs");
+        yScrollOffs_location = GetShaderLocation(shader, "yScrollOffs");
     }
+
+    int width = std::ceilf(b.width);
+    int height = std::ceilf(b.height);
+    if (!img.data || width != img.width || height != img.height) {
+        if (!img.data) {
+            // create image
+            img.data = (uint8_t*)malloc(width * height * 3);
+            img.width = width;
+            img.height = height;
+        } else {
+            int old_height = img.height;
+            ImageResize(&img, width, height);
+            y = ceil((float)height / old_height * y);
+        }
+
+        data_update = (uint8_t*)realloc(data_update, width * 3);
+        // memset(data, 155, texture.width * texture.height * 3);
+
+        UnloadTexture(texture);
+        texture = LoadTextureFromImage(img);
+        SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+        // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+    }
+
+    float bw = float(44100 / 2) / (samples - 1);
+
+    y = (y - 1 + texture.height) % texture.height;
+    // printf("\n\n");
+
+    for (int x = 0; x < texture.width; x++) {
+
+        // try average, if not enough samples lerp
+        float x_rel_m1 = (float)(x - 0.5) / (texture.width - 1);
+        float x_rel_1 = (float)(x + 0.5) / (texture.width - 1);
+        x_rel_m1 = Clamp(x_rel_m1, 0, 1);
+        x_rel_1 = Clamp(x_rel_1, 0, 1);
+
+        int bin = std::round(FftPostprocessor::xToFreq(x_rel_m1, 22, 22050, logspacing) / bw);
+        int bin_1 = std::round(FftPostprocessor::xToFreq(x_rel_1, 22, 22050, logspacing) / bw);
+        int num_bins = bin_1 - bin + 1;
+
+        float f_interp = 0;
+        if (lerp && num_bins <= 2) {
+            float x_rel = (float)(x) / (texture.width - 1);
+            int bin = std::floor(FftPostprocessor::xToFreq(x_rel, 22, 22050, logspacing) / bw);
+            float x_rel_left = FftPostprocessor::freqToX(bin * bw, 22, 22050, logspacing);
+            float x_rel_right = FftPostprocessor::freqToX((bin + 1) * bw, 22, 22050, logspacing);
+            float f_left = f[bin];
+            float f_right = f[bin + 1];
+
+            // lerp
+            float a = (x_rel - x_rel_left) / (x_rel_right - x_rel_left);
+            f_interp = f_left * (1 - a) + f_right * a;
+        } else {
+            float fn_max = -10000;
+            for (int i = 0; i < num_bins; i++) {
+                float val = f[bin + 1];
+                if (val > fn_max)
+                    fn_max = val;
+            }
+            f_interp = fn_max;
+        }
+
+        float fn = (f_interp - min) / (max - min); // convert range to [0,1]
+
+        Color c = heatmap(fn, colorscale);
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 0] = c.r;
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 1] = c.g;
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 2] = c.b;
+        data_update[x * 3 + 0] = c.r;
+        data_update[x * 3 + 1] = c.g;
+        data_update[x * 3 + 2] = c.b;
+    }
+
+    // UpdateTexture(texture, data);
+    UpdateTextureRec(texture, {0.0f, (float)y, (float)texture.width, 1.0f}, data_update);
+
+    if (IsShaderValid(shader)) {
+        float yScrollOffs = scroll ? (float)(y) / texture.height : 0;
+        SetShaderValue(shader, yScrollOffs_location, (void*)&yScrollOffs, SHADER_UNIFORM_FLOAT);
+        BeginShaderMode(shader);
+    }
+    DrawTexturePro(texture, {0, 0, (float)texture.width, (float)texture.height}, b, {0, 0}, 0, WHITE);
+    EndShaderMode();
+
+    draw_mouse_overlay(b, logspacing);
 }

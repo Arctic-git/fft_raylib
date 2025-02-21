@@ -3,6 +3,8 @@
 #include "imguiDrawables/FPSGraph.h"
 #include "raylib.h"
 
+extern int target_fps;
+
 void static_checkbox(const char* label, bool val) {
     ImGui::Checkbox(label, &val);
 }
@@ -12,6 +14,7 @@ void draw_window(int argc, char* argv[]) {
     if (ImGui::TreeNodeEx("Window", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
 
         ImGui::Text("%s", GetWorkingDirectory());
+        ImGui::Text("%s", GetApplicationDirectory());
         for (int i = 0; i < argc; i++) {
             ImGui::Text("%s", argv[i]);
         }
@@ -88,7 +91,6 @@ void draw_window(int argc, char* argv[]) {
             else
                 ClearWindowState(FLAG_VSYNC_HINT);
         }
-        static int target_fps = 60;
         if (ImGui::SliderInt("Target Fps", &target_fps, 0, 120))
             SetTargetFPS(target_fps);
 

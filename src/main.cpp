@@ -30,12 +30,19 @@
 #define SAMPLERATE (44100)
 #define WAVE_WIDTH (1024 * 2)
 #define SP_RECT(b) b.x, b.y, b.width, b.height
+static int screenWidth = 800;
+static int screenHeight = 600;
+int target_fps = 80;
 
 namespace fs = std::filesystem;
+fs::path path_res;
 
 int main(int argc, char* argv[]) {
-    int screenWidth = 800;
-    int screenHeight = 600;
+    path_res = fs::path(GetApplicationDirectory()).append(PATH_RESOURCES_REL);
+    TraceLog(LOG_INFO, "Resource Path: '%s'", path_res.string().c_str());
+    if (!DirectoryExists(path_res.c_str())) {
+        TraceLog(LOG_ERROR, "Resource path does not exist! '%s'", path_res.c_str());
+    }
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
@@ -43,8 +50,11 @@ int main(int argc, char* argv[]) {
     fftProcessor.updateWindow(1);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
     fftPostprocessorConti.config.smoothing.alphaDn = fftPostprocessorConti.config.smoothing.alphaUp = 0.2;
-    FftPostprocessor* pps[] = {&fftPostprocessorConti};
-    const char* ppNames[] = {"+fftPostprocessorConti"};
+    FftPostprocessor fftPostprocessorScroll(SAMPLERATE, fftProcessor.getOutputSize());
+    fftPostprocessorScroll.config.smoothing.alphaDn = fftPostprocessorScroll.config.smoothing.alphaUp = 1;
+    fftPostprocessorScroll.config.scaling.mag2db = false;
+    FftPostprocessor* pps[] = {&fftPostprocessorConti, &fftPostprocessorScroll};
+    const char* ppNames[] = {"+fftPostprocessorConti", "+fftPostprocessorScroll"};
 
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE); // | FLAG_WINDOW_UNDECORATED); //| FLAG_WINDOW_HIGHDPI);
     InitWindow(screenWidth, screenHeight, "fft_raylib");
@@ -53,48 +63,50 @@ int main(int argc, char* argv[]) {
     // std::print("{} {} {}\n", GetCurrentMonitor(), GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
     SetWindowPosition(GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
 
-    SetTargetFPS(60);
+    SetTargetFPS(target_fps);
     rlImGuiSetup(true);
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImPlot::CreateContext();
 
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    Shader shader = LoadShader(PATH_RESOURCES "custom.vs", PATH_RESOURCES "custom.fs");
+    Shader shader = LoadShader(fs::path(path_res).append("custom.vs").c_str(), fs::path(path_res).append("custom.fs").c_str());
 
     // remove text optimisation
     Texture2D texture = {1, 1, 1, 1, 7};
     SetShapesTexture(texture, (Rectangle){0.0f, 0.0f, 1.0f, 1.0f});
 
-    float l[WAVE_WIDTH];
-    float r[WAVE_WIDTH];
+    // wave texture
+    // Image im_w = {
+    //     .data = l,
+    //     .format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE,
+    //     .height = 1,
+    //     .width = WAVE_WIDTH,
+    //     .mipmaps = 1,
+    // };
+    // Texture2D texture_w = LoadTextureFromImage(im_w); // Load blank texture to fill on shader
+    // SetTextureFilter(texture_w, TEXTURE_FILTER_BILINEAR);
+    // SetTextureWrap(texture_w, TEXTURE_WRAP_CLAMP);
 
-    for (int i = 0; i < WAVE_WIDTH; i++) {
-        l[i] = i * 255 / (WAVE_WIDTH - 1);
-    }
-
-    // Image imBlank = GenImageColor(1, 1, BLANK);
-    Image im_w = {
-        .data = l,
-        .format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE,
-        .height = 1,
-        .width = WAVE_WIDTH,
-        .mipmaps = 1,
-    };
-    Texture2D texture_w = LoadTextureFromImage(im_w); // Load blank texture to fill on shader
-    SetTextureFilter(texture_w, TEXTURE_FILTER_BILINEAR);
-    SetTextureWrap(texture_w, TEXTURE_WRAP_CLAMP);
     float iTime = 0;
     bool pause = false;
     bool settings = false;
-
     bool wave = true;
-    bool windowed = false;
+    bool wavewindowed = false;
+    bool wavescroll = true;
+    bool wavescroll_scroll = true;
+    int wavescroll_colorscale = 3;
     bool wave_outline = true;
     bool wave_fill = true;
     bool xy = true;
     bool fft = true;
     bool fft_logspacing = true;
     int fft_colormode = 0;
+    bool fftscroll = true;
+    bool fftscroll_lerp = true;
+
+    float l[WAVE_WIDTH], r[WAVE_WIDTH];
+
+    wave_scrolltexture wave_scrolltexture1;
+    fft_scrolltexture fft_scrolltexture1;
 
     while (!WindowShouldClose() && !(IsKeyDown(KEY_W) && (IsKeyDown(KEY_LEFT_SUPER) | IsKeyDown(KEY_LEFT_CONTROL)))) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
@@ -179,20 +191,14 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
             BeginScissorMode(SP_RECT(b));
-            for (int i = 0; i < WAVE_WIDTH - 1; i++) {
-                Vector2 v_1 = {
-                    b.x + b.width / 2 + b.width / 2 * l[i],
-                    b.y + b.height / 2 + b.height / 2 * r[i],
-                };
-                Vector2 v_2 = {
-                    b.x + b.width / 2 + b.width / 2 * l[i + 1],
-                    b.y + b.height / 2 + b.height / 2 * r[i + 1],
-                };
-                DrawLineEx(v_1, v_2, draw_line_width, WHITE);
-                // DrawCircleV(v_1, 1, WHITE);
-            }
+            xy_line(b, l, r, WAVE_WIDTH);
             EndScissorMode();
             ImGui::End();
+        }
+
+        float fft_min = -66, fft_max = -12;
+        if (fft || fftscroll) {
+            fftProcessor.process(l, r);
         }
 
         if (fft) {
@@ -202,22 +208,54 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
 
-            fftProcessor.process(l, r);
             fftPostprocessorConti.process(fftProcessor.getOutput());
-            float fft_min = -66, fft_max = -12;
+            float my_fft_min = fft_min, my_fft_max = fft_max;
             if (!fftPostprocessorConti.config.scaling.mag2db) {
-                fft_min = powf(10, fft_min / 20);
-                fft_max = powf(10, fft_max / 20) / 2;
+                my_fft_min = powf(10, fft_min / 20);
+                my_fft_max = powf(10, fft_max / 20) / 2;
             }
+
             BeginScissorMode(SP_RECT(b));
-            fft_conti(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fft_logspacing, fft_colormode, fft_min, fft_max);
+            fft_conti(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fft_logspacing, fft_colormode, my_fft_min, my_fft_max);
             EndScissorMode();
             ImGui::End();
         }
 
-        if (windowed) {
+        if (fftscroll) {
             ImGui::SetNextWindowBgAlpha(0.0f);
-            ImGui::Begin("windowed", &windowed, 0);
+            ImGui::Begin("fftscroll", &fftscroll, 0);
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
+
+            fftPostprocessorScroll.process(fftProcessor.getOutput());
+            float my_fft_min = fft_min, my_fft_max = fft_max;
+            if (!fftPostprocessorScroll.config.scaling.mag2db) {
+                my_fft_min = powf(10, fft_min / 20);
+                my_fft_max = powf(10, fft_max / 20) / 2;
+            }
+
+            // BeginScissorMode(SP_RECT(b));
+            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fft_logspacing, wavescroll_colorscale, fftscroll_lerp, wavescroll_scroll, my_fft_min, my_fft_max);
+            // EndScissorMode();
+            ImGui::End();
+        }
+
+        if (wavescroll) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::Begin("wavescroll", &xy, 0);
+            ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+            ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+            Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
+            // BeginScissorMode(SP_RECT(b));
+            wave_scrolltexture1.draw(b, l, WAVE_WIDTH, wavescroll_scroll);
+            // EndScissorMode();
+            ImGui::End();
+        }
+
+        if (wavewindowed) {
+            ImGui::SetNextWindowBgAlpha(0.0f);
+            ImGui::Begin("wavewindowed", &wavewindowed, 0);
             ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
@@ -245,11 +283,18 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("wave_outline", &wave_outline);
                     ImGui::SameLine();
                     ImGui::Checkbox("wave_fill", &wave_fill);
-                    ImGui::Checkbox("windowed", &windowed);
+                    ImGui::Checkbox("wavewindowed", &wavewindowed);
+                    ImGui::Checkbox("wavescroll", &wavescroll);
+                    ImGui::SameLine();
+                    ImGui::Checkbox("wavescroll_scroll", &wavescroll_scroll);
                     ImGui::Checkbox("xy", &xy);
                     ImGui::Checkbox("fft", &fft);
+                    ImGui::Checkbox("fftscroll", &fftscroll);
+                    ImGui::SameLine();
+                    ImGui::Checkbox("fftscroll_lerp", &fftscroll_lerp);
                     ImGui::Checkbox("fft_logspacing", &fft_logspacing);
                     ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
+                    ImGui::SliderInt("wavescroll_colorscale", &wavescroll_colorscale, 0, 14);
                     ImGui::SliderFloat("draw_line_width", &draw_line_width, 0.1, 8, "%.1f", ImGuiSliderFlags_Logarithmic);
 
                     int ppNr = 0;
