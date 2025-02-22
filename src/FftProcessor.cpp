@@ -69,6 +69,15 @@ void rect_win(float* out, int N) {
 }
 
 FftProcessor::FftProcessor(int N, int paddingFactor) {
+    allocate(N, paddingFactor);
+    updateWindow(1);
+}
+
+FftProcessor::~FftProcessor() {
+    deallocate();
+}
+
+void FftProcessor::allocate(int N, int paddingFactor) {
     this->NwoPadding = N;
     N *= paddingFactor;
     this->N = N;
@@ -86,18 +95,17 @@ FftProcessor::FftProcessor(int N, int paddingFactor) {
 
     soundWindowedDebugTmp = new float[NwoPadding];
     soundWindowedDebug = &soundWindowed[((N - NwoPadding) / 2)];
-
-    updateWindow(1);
 }
-
-FftProcessor::~FftProcessor() {
-    delete[] fftWindow;
-    delete[] soundWindowed;
-    delete[] fftResult;
-    delete[] fftResultTmp;
-    kiss_fftr_free(fftCfg);
-    delete[] fftCpxData;
+void FftProcessor::deallocate() {
+    delete[] soundWindowedDebugTmp;
     delete[] slopeFactors;
+    delete[] fftCpxData;
+    kiss_fftr_free(fftCfg);
+    delete[] fftResultTmp;
+    delete[] fftResult;
+    delete[] soundWindowed;
+    delete[] fftWindow;
+    currWindow = -1;
 }
 
 const char* FftProcessor::getWindowName() {
@@ -195,10 +203,10 @@ void FftProcessor::process(float* inputLeft, float* inputRight) {
 }
 
 float* FftProcessor::getTimeWindowed() {
-    return soundWindowed;
+    return soundWindowed + (N - NwoPadding) / 2;
 }
 size_t FftProcessor::getTimeSize() {
-    return N;
+    return NwoPadding;
 }
 
 float* FftProcessor::getOutput() {

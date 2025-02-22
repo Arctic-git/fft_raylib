@@ -126,6 +126,9 @@ void draw_window(int argc, char* argv[]) {
             SetTraceLogLevel(item_current);
         }
 
+        ImGui::SeparatorText("ImGui");
+
+
         ImGui::TreePop();
     }
 }

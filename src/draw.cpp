@@ -7,9 +7,9 @@
 #include <algorithm>
 #include <filesystem>
 
-#define WAVE_WIDTH_MAX (1024 * 16)
-float lwmin_buf[WAVE_WIDTH_MAX];
-float lwmax_buf[WAVE_WIDTH_MAX];
+#define WAVE_BINS_MAX (1024 * 16)
+float lwmin_buf[WAVE_BINS_MAX];
+float lwmax_buf[WAVE_BINS_MAX];
 
 float draw_line_width = 1.5;
 namespace fs = std::filesystem;
@@ -349,7 +349,7 @@ Color freqToColor(float freq, float sat = 1, float val = 1) {
     note = fmodf(note, 12);
     //    return hsv(midiNote/12*360, 0.85, 0.85);
     //    uint32_t rgb = CCtoHEX((midiNote+3)/12, 0.9, 0.8);
-    //    return sf::Color(rgb&0xff, (rgb>>8)&0xff, (rgb>>16)&0xff);
+    //    return Color(rgb&0xff, (rgb>>8)&0xff, (rgb>>16)&0xff);
     return hsv(note / 12 * 360, sat, val);
 }
 Color fftColor(float relativex, float freq, int colormode, float sat = 1, float val = 1) {
@@ -386,10 +386,63 @@ static const char* freqToNote(float freq) {
     return midiToNote(midiNote);
 }
 
-Color heatmap(float value, int colormode) {
-    const auto color = tinycolormap::GetColor(value, (tinycolormap::ColormapType)(colormode)); // 13 more
-    return Color(color.ri(), color.gi(), color.bi(), 255);
+static Color heatmap_white(float value) {
+    return hsv(0, 0, value);
 }
+
+static Color heatmap_jet(float value) { // jet (blue ... red)
+    return hsv(240 - value * 240, 1, 1);
+}
+
+static Color heatmap_blackjet(float value) { // jet (black blue ... red)
+    float u = 1.0 / 6;
+
+    if (value < u)
+        return hsv(240, 1, value / u);
+    else
+        return hsv(240 - ((value - u) / (1 - u)) * 240, 1, 1);
+}
+
+static Color heatmap_gqrx(float value) {
+    // level 0: black background
+    float i = value * 255;
+    if (i < 20)
+        return Color(0, 0, 0, 255);
+    // level 1: black -> blue
+    else if ((i >= 20) && (i < 70))
+        return Color(0, 0, 140 * (i - 20) / 50, 255);
+    // level 2: blue -> light-blue / greenish
+    else if ((i >= 70) && (i < 100))
+        return Color(60 * (i - 70) / 30, 125 * (i - 70) / 30, 115 * (i - 70) / 30 + 140, 255);
+    // level 3: light blue -> yellow
+    else if ((i >= 100) && (i < 150))
+        return Color(195 * (i - 100) / 50 + 60, 130 * (i - 100) / 50 + 125, 255 - (255 * (i - 100) / 50), 255);
+    // level 4: yellow -> red
+    else if ((i >= 150) && (i < 250))
+        return Color(255, 255 - 255 * (i - 150) / 100, 0, 255);
+    // level 5: red -> white
+    else if (i >= 250)
+        return Color(255, 255 * (i - 250) / 5, 255 * (i - 250) / 5, 255);
+    else
+        return Color(0, 0, 0, 255);
+}
+
+Color heatmap(float value, int colormode) {
+    if (colormode == 0)
+        return heatmap_white(value);
+    else if (colormode == 1)
+        return heatmap_jet(value); // jet
+    else if (colormode == 2)
+        return heatmap_blackjet(value);
+    else if (colormode == 3)
+        return heatmap_gqrx(value);
+    else {
+        const auto color = tinycolormap::GetColor(value, (tinycolormap::ColormapType)(colormode - 4)); // 13 more
+        return Color(color.ri(), color.gi(), color.bi(), 255);
+    }
+}
+
+const char* colorscale_names[19] = {"my_white", "my_jet", "my_blackjet", "gqrx", "Parula", "Heat", "Jet", "Turbo", "Hot", "Gray", "Magma", "Inferno", "Plasma", "Viridis", "Cividis", "Github", "Cubehelix", "MyGqrxt", "MyGqrxt2"};
 
 void draw_mouse_overlay(Rectangle b, bool logspacing) {
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
@@ -410,10 +463,16 @@ void draw_mouse_overlay(Rectangle b, bool logspacing) {
             const char* note = midiToNote(midi);
             int oct = midiToNoteOctave(midi);
 
-            DrawTextEx(GetFontDefault(), TextFormat("%.0f Hz %-2.2s%d\n", freq, note, oct),
-                       Vector2Add(GetMousePosition(), (Vector2){-44, -24}), 20, 2, {WHITE});
-            // DrawTextEx(GetFontDefault(), TextFormat("%-2.2s%d  %.0f Hz", note, oct, freq),
-            //            Vector2Add(GetMousePosition(), (Vector2){-44, -24}), 20, 2, {WHITE});
+            int font_size = 20;
+            int font_spacing = 2;
+            // const char* text = TextFormat("%.0f Hz %-2.2s%d", freq, note, oct);
+            // const char* text = TextFormat("%-2.2s%d %.0f Hz", note, oct, freq);
+            const char* text = TextFormat("%.0f Hz\n%-2.2s%d", freq, note, oct);
+            Vector2 tb = MeasureTextEx(GetFontDefault(), text, font_size, font_spacing);
+            Vector2 pos = Vector2Add(GetMousePosition(), (Vector2){-44, -48});
+
+            DrawRectangleV(pos, tb, {0, 0, 0, 128});
+            DrawTextEx(GetFontDefault(), text, pos, font_size, font_spacing, WHITE);
         }
     }
 }
@@ -568,7 +627,7 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing
             f_interp = f_left * (1 - a) + f_right * a;
         } else {
             float fn_max = f[bin];
-            float fn_avg =0;
+            float fn_avg = 0;
             for (int i = 0; i < num_bins; i++) {
                 float val = f[bin + i];
                 if (val > fn_max)

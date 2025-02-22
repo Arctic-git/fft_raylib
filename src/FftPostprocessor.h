@@ -15,6 +15,8 @@ class FftPostprocessor {
 public:
     FftPostprocessor(int samplerate, int inputSize, int bins = 0, float minFreq = 22, float maxFreq = 22050, int notebased = 0, int fold = 0);
     ~FftPostprocessor();
+    void allocate(int samplerate, int inputSize, int bins = 0, float minFreq = 22, float maxFreq = 22050, int notebased = 0, int fold = 0);
+    void deallocate();
     void process(float* input);
     float* getOutput();
     size_t getOutputSize();

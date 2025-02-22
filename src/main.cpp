@@ -19,20 +19,20 @@
 #include "implot.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "rlFixes.h"
 #include "rlImGui.h"
 #include "rlgl.h"
-#include <chrono>
+#include <algorithm>
 #include <filesystem>
 #include <print>
-#include <thread>
 
 #define SAMPLERATE (44100)
-#define WAVE_WIDTH (1024 * 2)
 #define SP_RECT(b) b.x, b.y, b.width, b.height
 static int screenWidth = 1200;
 static int screenHeight = 1000;
 int target_fps = 80;
+
+#define WAVE_SAMPLES_MAX (1024 * 64)
+int wave_samples = 2048;
 
 namespace fs = std::filesystem;
 fs::path path_res;
@@ -75,11 +75,19 @@ int main(int argc, char* argv[]) {
 #endif
     TraceLog(LOG_INFO, "path_settings '%s'", path_settings.c_str());
 
+    // copy default settings from resources
+    fs::path path_imgui = fs::path(path_settings).append("imgui.ini").c_str();
+    if (!FileExists(path_imgui.c_str())) {
+        fs::copy(fs::path(path_res).append("imgui_default.ini"), path_imgui);
+    }
+
+    int fftp_window = 1;
+    int fftp_padding = 32768 / 2;
 
     Ringbuffer soundbuffer(1024 * 256);
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
-    FftProcessor fftProcessor(WAVE_WIDTH, std::max(32768 / 2, WAVE_WIDTH) / WAVE_WIDTH);
-    fftProcessor.updateWindow(1);
+    FftProcessor fftProcessor(wave_samples, std::max(fftp_padding / wave_samples, 1));
+    fftProcessor.updateWindow(fftp_window);
     FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
     fftPostprocessorConti.config.smoothing.alphaDn = fftPostprocessorConti.config.smoothing.alphaUp = 0.2;
     FftPostprocessor fftPostprocessorScroll(SAMPLERATE, fftProcessor.getOutputSize());
@@ -99,7 +107,6 @@ int main(int argc, char* argv[]) {
     SetTargetFPS(target_fps);
     rlImGuiSetup(true);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    fs::path path_imgui = fs::path(path_settings).append("imgui.ini").c_str();
     ImGui::GetIO().IniFilename = path_imgui.c_str();
     ImPlot::CreateContext();
 
@@ -114,7 +121,7 @@ int main(int argc, char* argv[]) {
     //     .data = l,
     //     .format = PIXELFORMAT_UNCOMPRESSED_GRAYSCALE,
     //     .height = 1,
-    //     .width = WAVE_WIDTH,
+    //     .width = wave_samples,
     //     .mipmaps = 1,
     // };
     // Texture2D texture_w = LoadTextureFromImage(im_w); // Load blank texture to fill on shader
@@ -128,7 +135,7 @@ int main(int argc, char* argv[]) {
     bool wavewindowed = false;
     bool wavescroll = true;
     bool wavescroll_scroll = true;
-    int wavescroll_colorscale = 3;
+    int wavescroll_colorscale = 7;
     bool wave_outline = true;
     bool wave_fill = true;
     bool xy = true;
@@ -138,8 +145,13 @@ int main(int argc, char* argv[]) {
     bool fftscroll = true;
     bool fftscroll_lerp = true;
     bool fftscroll_avg = true;
+    int stereo_mode = 0;
+    ImVec2 gui_padding{8, 8};
+    float gui_seperator = 2;
 
-    float l[WAVE_WIDTH], r[WAVE_WIDTH];
+    float fft_min = -66, fft_max = -12;
+
+    float l[WAVE_SAMPLES_MAX], r[WAVE_SAMPLES_MAX], lr[WAVE_SAMPLES_MAX];
 
     wave_scrolltexture wave_scrolltexture1;
     fft_scrolltexture fft_scrolltexture1;
@@ -148,6 +160,9 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
         if (IsKeyPressed(KEY_P)) pause ^= 1;
         if (IsKeyPressed(KEY_S)) settings ^= 1;
+        if (IsKeyPressed(KEY_D)) {
+            ImGui::LoadIniSettingsFromDisk(fs::path(path_res).append("imgui_default.ini").c_str());
+        }
 
         if (IsWindowHidden()) {
             WaitTime(4);
@@ -155,7 +170,7 @@ int main(int argc, char* argv[]) {
 
         int freshSamples = 0;
         if (!pause) {
-            freshSamples = soundbuffer.getlr(l, r, WAVE_WIDTH);
+            freshSamples = soundbuffer.getlr(l, r, wave_samples);
         }
 
         iTime += GetFrameTime();
@@ -179,7 +194,7 @@ int main(int argc, char* argv[]) {
         // Shader shader_wave = LoadShader(0, PATH_RESOURCES "wave.fs");
         // if (IsShaderValid(shader_wave)) {
         //     BeginShaderMode(shader_wave);
-        //     DrawTexturePro(texture_w, (Rectangle){0, 0, WAVE_WIDTH, 1}, (Rectangle){0, 0, w, h / 2}, (Vector2){0, 0}, 0, WHITE);
+        //     DrawTexturePro(texture_w, (Rectangle){0, 0, wave_samples, 1}, (Rectangle){0, 0, w, h / 2}, (Vector2){0, 0}, 0, WHITE);
         //     EndShaderMode();
         // }
         // UnloadShader(shader_wave);
@@ -201,6 +216,8 @@ int main(int argc, char* argv[]) {
         // DrawLineEx({150, 150}, {250, 150}, 5, WHITE);
 
         rlImGuiBegin();
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, gui_padding);          // default is 8,8
+        ImGui::PushStyleVar(ImGuiStyleVar_DockingSeparatorSize, gui_seperator); // default is 2
         ImGui::DockSpaceOverViewport(0, NULL, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_AutoHideTabBar);
 
         if (wave) {
@@ -217,9 +234,9 @@ int main(int argc, char* argv[]) {
 
             rlDisableBackfaceCulling();
             BeginScissorMode(SP_RECT(b1));
-            wave_line(b1, l, WAVE_WIDTH, b1.width, wave_fill, wave_outline);
+            wave_line(b1, l, wave_samples, b1.width, wave_fill, wave_outline);
             BeginScissorMode(SP_RECT(b2));
-            wave_line(b2, r, WAVE_WIDTH, b2.width, wave_fill, wave_outline);
+            wave_line(b2, r, wave_samples, b2.width, wave_fill, wave_outline);
             EndScissorMode();
             ImGui::End();
         }
@@ -231,14 +248,26 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
             BeginScissorMode(SP_RECT(b));
-            xy_line(b, l, r, WAVE_WIDTH);
+            xy_line(b, l, r, wave_samples);
             EndScissorMode();
             ImGui::End();
         }
 
-        float fft_min = -66, fft_max = -12;
         if (fft || fftscroll) {
-            fftProcessor.process(l, r);
+
+            if (stereo_mode == 0) {
+                fftProcessor.process(l, r);
+            } else if (stereo_mode == 1) {
+                for (int i = 0; i < wave_samples; i++) {
+                    lr[i] = (l[i] + r[i]) / 2;
+                }
+                fftProcessor.process(lr);
+            } else if (stereo_mode == 2) {
+                for (int i = 0; i < wave_samples; i++) {
+                    lr[i] = (l[i] - r[i]) / 2;
+                }
+                fftProcessor.process(lr);
+            }
         }
 
         if (fft) {
@@ -288,7 +317,7 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
             // BeginScissorMode(SP_RECT(b));
-            wave_scrolltexture1.draw(b, l, WAVE_WIDTH, wavescroll_scroll);
+            wave_scrolltexture1.draw(b, l, wave_samples, wavescroll_scroll);
             // EndScissorMode();
             ImGui::End();
         }
@@ -306,13 +335,19 @@ int main(int argc, char* argv[]) {
             EndScissorMode();
             ImGui::End();
         }
+        ImGui::PopStyleVar(2);
 
         if (settings) {
-            static bool imgui_ShowDemoWindow = 0, implot_ShowDemoWindow = 0;
+            static bool imgui_ShowDemoWindow = 0, implot_ShowDemoWindow = 0, imgui_ShowStyleEditor = 0;
             if (imgui_ShowDemoWindow)
                 ImGui::ShowDemoWindow(&imgui_ShowDemoWindow);
             if (implot_ShowDemoWindow)
                 ImPlot::ShowDemoWindow(&implot_ShowDemoWindow);
+            if (imgui_ShowStyleEditor) {
+                ImGui::Begin("Dear ImGui Style Editor", &imgui_ShowStyleEditor);
+                ImGui::ShowStyleEditor();
+                ImGui::End();
+            }
 
             if (ImGui::Begin("Settings")) {
 
@@ -320,6 +355,7 @@ int main(int argc, char* argv[]) {
                 if (ImGui::TreeNodeEx("Drawing", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
                     ImGui::Checkbox("pause", &pause);
                     ImGui::Checkbox("wave", &wave);
+                    ImGui::SameLine();
                     ImGui::Checkbox("wave_outline", &wave_outline);
                     ImGui::SameLine();
                     ImGui::Checkbox("wave_fill", &wave_fill);
@@ -336,9 +372,57 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("fftscroll_avg", &fftscroll_avg);
                     ImGui::Checkbox("fft_logspacing", &fft_logspacing);
                     ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
-                    ImGui::SliderInt("wavescroll_colorscale", &wavescroll_colorscale, 0, 14);
+
+                    float minmax[2] = {fft_min, fft_max};
+                    ImGui::SliderFloat2("fft_min/max", (float*)&minmax, -100, 0, "%.0f");
+                    fft_min = minmax[0];
+                    fft_max = minmax[1];
+
+                    // ImGui::SliderFloat("fft_max", &fft_max, -100, 0, "%.0f");
+                    // ImGui::SliderInt("wavescroll_colorscale", &wavescroll_colorscale, 0, 14);
+                    ImGui::SliderInt("wavescroll_colorscale", &wavescroll_colorscale, 0, IM_ARRAYSIZE(colorscale_names) - 1, colorscale_names[wavescroll_colorscale]);
+
                     ImGui::SliderFloat("draw_line_width", &draw_line_width, 0.1, 8, "%.1f", ImGuiSliderFlags_Logarithmic);
 
+                    ImGui::SliderFloat("gui_padding", &gui_padding.x, 0.0f, 20.0f, "%.0f");
+                    gui_padding.y = gui_padding.x;
+                    ImGui::SliderFloat("gui_seperator", &gui_seperator, 0.0f, 6.0f, "%.0f");
+
+                    if (ImGui::TreeNodeEx("FftProcessor", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+                        if (ImGui::SliderInt("fftp_window", &fftp_window, 0, 4, fftProcessor.getWindowName())) {
+                            fftProcessor.updateWindow(fftp_window);
+                        }
+
+                        bool reload_fft = false;
+                        int wave_samples_base = log2(wave_samples);
+                        if (ImGui::SliderInt("wave_samples", &wave_samples_base, 6, 16, TextFormat("%d", 1 << wave_samples_base))) {
+                            wave_samples = 1 << wave_samples_base;
+                            reload_fft = true;
+                        }
+                        int pad_base = log2(fftp_padding);
+                        if (ImGui::SliderInt("fftp_padding", &pad_base, 6, 16, TextFormat("%d", 1 << pad_base))) {
+                            fftp_padding = 1 << pad_base;
+                            reload_fft = true;
+                        }
+                        if (reload_fft) {
+                            TraceLog(LOG_INFO, "reload fftp %d %d", wave_samples, fftp_padding);
+                            fftProcessor.deallocate();
+                            fftProcessor.allocate(wave_samples, std::max(fftp_padding / wave_samples, 1));
+                            fftProcessor.updateWindow(fftp_window);
+
+                            TraceLog(LOG_INFO, "reload fftpp %d %d", SAMPLERATE, fftProcessor.getOutputSize());
+                            fftPostprocessorConti.deallocate();
+                            fftPostprocessorScroll.deallocate();
+                            fftPostprocessorConti.allocate(SAMPLERATE, fftProcessor.getOutputSize());
+                            fftPostprocessorScroll.allocate(SAMPLERATE, fftProcessor.getOutputSize());
+                        }
+
+                        ImGui::SliderInt("stereo_mode", &stereo_mode, 0, 2, (const char*[]){"fft(l)+fft(r)", "fft(l+r)", "fft(l-r)"}[stereo_mode]);
+
+                        ImGui::SliderFloat("slope", &fftProcessor.config.slope, 0, 6, "%.0f", ImGuiSliderFlags_None);
+                        ImGui::TreePop();
+                    }
                     int ppNr = 0;
                     for (FftPostprocessor* pp : pps) {
                         ImGuiTreeNodeFlags flag = ImGuiTreeNodeFlags_None;
@@ -367,6 +451,7 @@ int main(int argc, char* argv[]) {
                 ImGui::Separator();
                 ImGui::Checkbox("ImGui::ShowDemoWindow", &imgui_ShowDemoWindow);
                 ImGui::Checkbox("ImPlot::ShowDemoWindow", &implot_ShowDemoWindow);
+                ImGui::Checkbox("ImGui::ShowStyleEditor", &imgui_ShowStyleEditor);
             }
             ImGui::End();
         }

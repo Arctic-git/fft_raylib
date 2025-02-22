@@ -4,6 +4,8 @@
 #include "raylib.h"
 #include <stdint.h>
 
+extern const char* colorscale_names[19];
+
 void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill, bool wave_outline);
 
 class wave_scrolltexture {

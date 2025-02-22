@@ -7,6 +7,10 @@ class FftProcessor {
 public:
     FftProcessor(int N, int paddingFactor = 1);
     ~FftProcessor();
+
+    void allocate(int N, int paddingFactor = 1);
+    void deallocate();
+
     void updateWindow(int windowFunction);
     void process(float* input);
     void process(float* inputLeft, float* inputRight);

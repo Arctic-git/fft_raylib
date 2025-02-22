@@ -105,6 +105,12 @@ static void bin(const float* input, int inputSize, float* output, int outputSize
 }
 
 FftPostprocessor::FftPostprocessor(int samplerate, int inputSize, int bins, float minFreq, float maxFreq, int notebased, int fold) {
+    allocate(samplerate, inputSize, bins, minFreq, maxFreq, notebased, fold);
+}
+FftPostprocessor::~FftPostprocessor() {
+}
+
+void FftPostprocessor::allocate(int samplerate, int inputSize, int bins, float minFreq, float maxFreq, int notebased, int fold) {
     this->samplerate = samplerate;
     this->inputSize = inputSize;
     this->fold = fold;
@@ -169,7 +175,7 @@ FftPostprocessor::FftPostprocessor(int samplerate, int inputSize, int bins, floa
         folded[i] = blurred[i] = blurredSmoothed[i] = blurredSmoothedDecayed[i] = blurredSmoothedDecayedScaled[i] = config.smoothing.minDbClamp;
     }
 }
-FftPostprocessor::~FftPostprocessor() {
+void FftPostprocessor::deallocate() {
     delete[] binned;
     delete[] folded;
     delete[] blurred;
