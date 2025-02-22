@@ -63,6 +63,8 @@
         "list": "cpp",
         "*.m": "cpp",
         "__tree": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "rlgl.h": "c",
+        "math.h": "c"
     }
 }

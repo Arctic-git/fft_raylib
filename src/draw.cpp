@@ -41,6 +41,11 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
         wavebins = samples;
     }
 
+    for (int i = 0; i < wavebins; i++) {
+        lwmin[i] = Clamp(lwmin[i], -1, 1);
+        lwmax[i] = Clamp(lwmax[i], -1, 1);
+    }
+
     if (wave_fill) {
         rlBegin(RL_QUADS);
         for (int i = 0; i < wavebins - 1; i++) {
@@ -117,7 +122,7 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
                 b.y + b.height * ((float)(lwmin[i + 1] / 2) + 0.5f),
             };
 
-            DrawLineEx(v_1, v_2, draw_line_width, WHITE);
+            DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE);
             // DrawCircleV(v_1, 1, WHITE);
         }
         for (int i = 0; i < wavebins - 1; i++) {
@@ -130,7 +135,7 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
                 b.y + b.height * ((float)(lwmax[i + 1] / 2) + 0.5f),
             };
 
-            DrawLineEx(v_1, v_2, draw_line_width, WHITE);
+            DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE);
             // DrawCircleV(v_1, 1, WHITE);
         }
     }
@@ -238,15 +243,18 @@ void wave_scrolltexture::draw(Rectangle b, float* l, int samples, bool scroll) {
 
 void xy_line(Rectangle b, float* l, float* r, int samples) {
     for (int i = 0; i < samples - 1; i++) {
+
         Vector2 v_1 = {
-            b.x + b.width / 2 + b.width / 2 * l[i],
-            b.y + b.height / 2 + b.height / 2 * r[i],
+            b.x + b.width / 2 + b.width / 2 * Clamp(l[i], -1, 1),
+            b.y + b.height / 2 + b.height / 2 * Clamp(r[i], -1, 1),
         };
         Vector2 v_2 = {
-            b.x + b.width / 2 + b.width / 2 * l[i + 1],
-            b.y + b.height / 2 + b.height / 2 * r[i + 1],
+            b.x + b.width / 2 + b.width / 2 * Clamp(l[i + 1], -1, 1),
+            b.y + b.height / 2 + b.height / 2 * Clamp(r[i + 1], -1, 1),
         };
-        DrawLineEx(v_1, v_2, draw_line_width, WHITE);
+        // DrawLineEx(v_1, v_2, draw_line_width, WHITE); //6 vertecies per line
+        DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE); // 4 vertecies per line
+        // DrawPixelV(v_1, WHITE);
         // DrawCircleV(v_1, 1, WHITE);
     }
 }

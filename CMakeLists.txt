@@ -26,7 +26,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     MACOSX_BUNDLE_ICON_FILE ../Resources/icon3.png
     RESOURCE "${resource_files}"
 )
-set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/) # misspelled intentionally. launches in non-package mode
+# set(EXE_PREFIX ./${PROJECT_NAME}.app/contents/macos/) # misspelled intentionally. launches in non-package mode
 # set(EXE_PREFIX ./${PROJECT_NAME}.app/Contents/MacOS/) 
 # set(EXE_PREFIX open -a ./)
 # set(EXE_PREFIX ./)
