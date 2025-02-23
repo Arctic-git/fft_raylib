@@ -25,7 +25,7 @@ private:
 class fft_scrolltexture {
 public:
     fft_scrolltexture() = default;
-    void draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, bool bin_avgmode, float min = -66, float max = -12);
+    void draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool scroll, float min = -66, float max = -12);
 
 private:
     int y = 1;
@@ -38,6 +38,7 @@ private:
 
 void xy_line(Rectangle b, float* l, float* r, int samples);
 void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min = -66, float max = -12);
+void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min = -66, float max = -12);
 
 extern float draw_line_width;
 

@@ -11,7 +11,7 @@ std::map<std::string, loopMeasurement_t> PerfMon::measurements;
 std::mutex PerfMon::mtx;
 
 PerfMon::PerfMon(std::string name) : name(name) {
-    std::lock_guard<std::mutex> lck(mtx);
+    // std::lock_guard<std::mutex> lck(mtx);
     measurements[name.c_str()] = {};
     measurement = &measurements[name.c_str()];
 }
@@ -23,7 +23,7 @@ float PerfMon::sample() {
         diff_s = duration_cast<std::chrono::duration<float>>(now - last).count();
 
         {
-            std::lock_guard<std::mutex> lck(mtx);
+            // std::lock_guard<std::mutex> lck(mtx);
             if (measurement->valid) {
                 measurement->min_s = std::min(diff_s, measurement->min_s);
                 measurement->max_s = std::max(diff_s, measurement->max_s);
@@ -52,14 +52,14 @@ float PerfMon::sample_end() {
 }
 
 loopMeasurement_t PerfMon::get(std::string name) {
-    std::lock_guard<std::mutex> lck(mtx);
+    // std::lock_guard<std::mutex> lck(mtx);
     measurements.at(name).valid = false;
     measurements.at(name).avg_s = measurements.at(name).accum_s / measurements.at(name).samples;
     return measurements.at(name);
 }
 
 std::map<std::string, loopMeasurement_t> PerfMon::getAll() {
-    std::lock_guard<std::mutex> lck(mtx);
+    // std::lock_guard<std::mutex> lck(mtx);
     for (auto& pair : measurements) {
         if(pair.second.valid){
             pair.second.valid = false;
@@ -79,7 +79,7 @@ void PerfMon::print() {
     for (const auto& pair : map) {
         const loopMeasurement_t& m = pair.second;
         if(m.samples)
-            printf("%-25s  %5.1f  %5.1f  %5.1f  %4d\n", pair.first.c_str(), m.min_s * 1000, m.max_s * 1000, m.avg_s * 1000, m.samples);
+            printf("%-25s  %6.2f  %6.2f  %6.2f  %4d\n", pair.first.c_str(), m.min_s * 1000, m.max_s * 1000, m.avg_s * 1000, m.samples);
         else
             printf("%-25s  -\n", pair.first.c_str());
     }

@@ -66,5 +66,8 @@
         "map": "cpp",
         "rlgl.h": "c",
         "math.h": "c"
-    }
+    },
+    "cmake.debugConfig": {
+        "MIMode": "lldb"
+      }
 }

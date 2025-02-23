@@ -93,9 +93,9 @@ int main(int argc, char* argv[]) {
     AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
     FftProcessor fftProcessor(wave_samples, std::max(fftp_padding / wave_samples, 1));
     fftProcessor.updateWindow(fftp_window);
-    FftPostprocessor fftPostprocessorConti(SAMPLERATE, fftProcessor.getOutputSize());
+    FftPostprocessor fftPostprocessorConti;
     fftPostprocessorConti.config.smoothing.alphaDn = fftPostprocessorConti.config.smoothing.alphaUp = 0.2;
-    FftPostprocessor fftPostprocessorScroll(SAMPLERATE, fftProcessor.getOutputSize());
+    FftPostprocessor fftPostprocessorScroll;
     fftPostprocessorScroll.config.smoothing.alphaDn = fftPostprocessorScroll.config.smoothing.alphaUp = 1;
     fftPostprocessorScroll.config.scaling.mag2db = false;
     FftPostprocessor* pps[] = {&fftPostprocessorConti, &fftPostprocessorScroll};
@@ -148,8 +148,6 @@ int main(int argc, char* argv[]) {
     bool fft_logspacing = true;
     int fft_colormode = 0;
     bool fftscroll = true;
-    bool fftscroll_lerp = true;
-    bool fftscroll_avg = true;
     int stereo_mode = 0;
     ImVec2 gui_padding{8, 8};
     float gui_seperator = 2;
@@ -322,7 +320,7 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
 
-            fftPostprocessorConti.process(fftProcessor.getOutput());
+            fftPostprocessorConti.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), SAMPLERATE);
             float my_fft_min = fft_min, my_fft_max = fft_max;
             if (!fftPostprocessorConti.config.scaling.mag2db) {
                 my_fft_min = powf(10, fft_min / 20);
@@ -330,7 +328,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (fft_scissor) BeginScissorMode(SP_RECT(b));
-            fft_conti(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fft_logspacing, fft_colormode, my_fft_min, my_fft_max);
+            fft_conti2(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fftPostprocessorConti.config.binning.logbinning, fft_colormode, my_fft_min, my_fft_max);
             if (fft_scissor) EndScissorMode();
             ImGui::End();
         }
@@ -343,14 +341,14 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
 
-            fftPostprocessorScroll.process(fftProcessor.getOutput());
+            fftPostprocessorScroll.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), SAMPLERATE);
             float my_fft_min = fft_min, my_fft_max = fft_max;
             if (!fftPostprocessorScroll.config.scaling.mag2db) {
                 my_fft_min = powf(10, fft_min / 20);
                 my_fft_max = powf(10, fft_max / 20) / 2;
             }
 
-            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fft_logspacing, wavescroll_colorscale, fftscroll_lerp, wavescroll_scroll, fftscroll_avg, my_fft_min, my_fft_max);
+            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fftPostprocessorScroll.config.binning.logbinning, wavescroll_colorscale, wavescroll_scroll, my_fft_min, my_fft_max);
             ImGui::End();
         }
         pm_fftscroll.sample_end();
@@ -404,10 +402,6 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("xy", &xy);
                     ImGui::Checkbox("fft", &fft);
                     ImGui::Checkbox("fftscroll", &fftscroll);
-                    ImGui::SameLine();
-                    ImGui::Checkbox("fftscroll_lerp", &fftscroll_lerp);
-                    ImGui::SameLine();
-                    ImGui::Checkbox("fftscroll_avg", &fftscroll_avg);
                     ImGui::Checkbox("fft_logspacing", &fft_logspacing);
                     ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
 
@@ -448,12 +442,6 @@ int main(int argc, char* argv[]) {
                             fftProcessor.deallocate();
                             fftProcessor.allocate(wave_samples, std::max(fftp_padding / wave_samples, 1));
                             fftProcessor.updateWindow(fftp_window);
-
-                            TraceLog(LOG_INFO, "reload fftpp %d %d", SAMPLERATE, fftProcessor.getOutputSize());
-                            fftPostprocessorConti.deallocate();
-                            fftPostprocessorScroll.deallocate();
-                            fftPostprocessorConti.allocate(SAMPLERATE, fftProcessor.getOutputSize());
-                            fftPostprocessorScroll.allocate(SAMPLERATE, fftProcessor.getOutputSize());
                         }
 
                         ImGui::SliderInt("stereo_mode", &stereo_mode, 0, 2, (const char*[]){"fft(l)+fft(r)", "fft(l+r)", "fft(l-r)"}[stereo_mode]);

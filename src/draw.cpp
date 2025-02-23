@@ -5,6 +5,7 @@
 #include "rlgl.h"
 #include "tinycolormap.hpp"
 #include <algorithm>
+#include <assert.h>
 #include <filesystem>
 
 #define WAVE_BINS_MAX (1024 * 16)
@@ -456,14 +457,14 @@ void draw_mouse_overlay(Rectangle b, bool logspacing) {
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         Vector2 mpr = GetMousePositionRelativeTo(b);
         if (mpr.x > 0 && mpr.x < 1 && mpr.y > 0 && mpr.y < 1) {
-            float freq = FftPostprocessor::xToFreq(mpr.x, 22, 22050, logspacing);
+            float freq = xToFreq(mpr.x, 22, 22050, logspacing);
             // float amplitude = min + (1 - mpr.y) * (max - min); // data[int(round(bin))];
             float midi = freqToMidi(freq);
             float midiH = roundf(midi) + 0.5;
             float midiL = roundf(midi) - 0.5;
 
-            float px_midiH = FftPostprocessor::freqToX(midiToFreq(midiH), 22, 22050, logspacing) * b.width + b.x;
-            float px_midiL = FftPostprocessor::freqToX(midiToFreq(midiL), 22, 22050, logspacing) * b.width + b.x;
+            float px_midiH = freqToX(midiToFreq(midiH), 22, 22050, logspacing) * b.width + b.x;
+            float px_midiL = freqToX(midiToFreq(midiL), 22, 22050, logspacing) * b.width + b.x;
             DrawRectangle(px_midiL, b.y, px_midiH - px_midiL, b.height, {255, 255, 255, 32});
             DrawLineEx({px_midiL, b.y}, {px_midiL, b.y + b.height}, draw_line_width, WHITE);
             DrawLineEx({px_midiH, b.y}, {px_midiH, b.y + b.height}, draw_line_width, WHITE);
@@ -499,8 +500,8 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
             // fn = std::min(1.f, fn);
             // fn_1 = std::min(1.f, fn_1);
 
-            float relativex = FftPostprocessor::freqToX(i * bw, 22, 22050, logspacing);
-            float relativex_1 = FftPostprocessor::freqToX((i + 1) * bw, 22, 22050, logspacing);
+            float relativex = freqToX(i * bw, 22, 22050, logspacing);
+            float relativex_1 = freqToX((i + 1) * bw, 22, 22050, logspacing);
             if (relativex_1 < 0)
                 continue;
 
@@ -543,8 +544,8 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
             fn = std::max(-8.f / b.height, fn);
             fn_1 = std::max(-8.f / b.height, fn_1); // line can be 8 px below (linewidth/2)
 
-            float relativex = FftPostprocessor::freqToX(i * bw, 22, 22050, logspacing);
-            float relativex_1 = FftPostprocessor::freqToX((i + 1) * bw, 22, 22050, logspacing);
+            float relativex = freqToX(i * bw, 22, 22050, logspacing);
+            float relativex_1 = freqToX((i + 1) * bw, 22, 22050, logspacing);
             if (relativex_1 < 0)
                 continue;
 
@@ -572,7 +573,93 @@ void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_out
     draw_mouse_overlay(b, logspacing);
 }
 
-void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool lerp, bool scroll, bool bin_avgmode, float min, float max) {
+void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min, float max) {
+
+    if (wave_fill) {
+        rlBegin(RL_QUADS);
+        for (int i = 0; i < samples - 1; i++) {
+            float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
+            float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
+
+            fn = std::max(0.f, fn);
+            fn_1 = std::max(0.f, fn_1);
+            // fn = std::min(1.f, fn);
+            // fn_1 = std::min(1.f, fn_1);
+
+            float relativex = (float)(i) / (samples - 1);
+            float relativex_1 = (float)(i + 1) / (samples - 1);
+            if (relativex_1 < 0)
+                continue;
+
+            Vector2 v1 = {
+                b.x + b.width * relativex,
+                b.y + b.height,
+            };
+            Vector2 v2 = {
+                b.x + b.width * relativex,
+                b.y + b.height - b.height * fn,
+            };
+            Vector2 v3 = {
+                b.x + b.width * relativex_1,
+                b.y + b.height - b.height * fn_1,
+            };
+            Vector2 v4 = {
+                b.x + b.width * relativex_1,
+                b.y + b.height,
+            };
+
+            // Color color = WHITE;
+            Color color = fftColor(relativex_1, 0, colormode);
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn_1)))); //-255 + 255*fn_1
+            rlVertex2f(v4.x, v4.y);
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn_1)));
+            rlVertex2f(v3.x, v3.y);
+            color = fftColor(relativex, 0, colormode);
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn)));
+            rlVertex2f(v2.x, v2.y);
+            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn))));
+            rlVertex2f(v1.x, v1.y);
+        }
+        rlEnd();
+    }
+
+    if (wave_outline) {
+        for (int i = 0; i < samples - 1; i++) {
+            float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
+            float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
+            fn = std::max(-8.f / b.height, fn);
+            fn_1 = std::max(-8.f / b.height, fn_1); // line can be 8 px below (linewidth/2)
+
+            float relativex = (float)(i) / (samples - 1);
+            float relativex_1 = (float)(i + 1) / (samples - 1);
+            if (relativex_1 < 0)
+                continue;
+
+            Vector2 v_1 = {
+                b.x + b.width * relativex,
+                b.y + b.height - b.height * fn,
+            };
+            Vector2 v_2 = {
+                b.x + b.width * relativex_1,
+                b.y + b.height - b.height * fn_1,
+            };
+
+            // Color color = BLACK;
+            // Color color = hsv(relativex * 360.0, 0.8, 1);
+            Color color = fftColor(relativex, 0, colormode, 0.8);
+            Color color_1 = fftColor(relativex_1, 0, colormode, 0.8);
+            DrawLineExDualcolor(v_1, v_2, draw_line_width, color, color_1);
+            // DrawCircleV(v_1, 1, WHITE);
+        }
+
+        // // hides line on silence
+        // DrawLineEx({b.x, b.y + b.height + 1}, {b.x + b.width, b.y + b.height + 1}, 2, BLACK);
+    }
+
+    draw_mouse_overlay(b, logspacing);
+}
+
+void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool scroll, float min, float max) {
     if (b.width <= 0 || b.height <= 0) return;
 
     if (!shader.id) {
@@ -604,50 +691,15 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing
         // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
     }
 
-    float bw = float(44100 / 2) / (samples - 1);
 
     y = (y - 1 + texture.height) % texture.height;
     // printf("\n\n");
 
+    assert(samples == texture.width);
+
     for (int x = 0; x < texture.width; x++) {
-
-        // try average, if not enough samples lerp
-        float x_rel_m1 = (float)(x - 0.5) / (texture.width - 1);
-        float x_rel_1 = (float)(x + 0.5) / (texture.width - 1);
-        x_rel_m1 = Clamp(x_rel_m1, 0, 1);
-        x_rel_1 = Clamp(x_rel_1, 0, 1);
-
-        int bin = std::round(FftPostprocessor::xToFreq(x_rel_m1, 22, 22050, logspacing) / bw);
-        int bin_1 = std::round(FftPostprocessor::xToFreq(x_rel_1, 22, 22050, logspacing) / bw);
-        int num_bins = bin_1 - bin + 1;
-
-        float f_interp = 0;
-        if (lerp && num_bins <= 2) {
-            float x_rel = (float)(x) / (texture.width - 1);
-            int bin = std::floor(FftPostprocessor::xToFreq(x_rel, 22, 22050, logspacing) / bw);
-            float x_rel_left = FftPostprocessor::freqToX(bin * bw, 22, 22050, logspacing);
-            float x_rel_right = FftPostprocessor::freqToX((bin + 1) * bw, 22, 22050, logspacing);
-            float f_left = f[bin];
-            float f_right = f[bin + 1];
-
-            // lerp
-            float a = (x_rel - x_rel_left) / (x_rel_right - x_rel_left);
-            f_interp = f_left * (1 - a) + f_right * a;
-        } else {
-            float fn_max = f[bin];
-            float fn_avg = 0;
-            for (int i = 0; i < num_bins; i++) {
-                float val = f[bin + i];
-                if (val > fn_max)
-                    fn_max = val;
-                fn_avg += val / num_bins;
-            }
-            f_interp = fn_max;
-            if (bin_avgmode)
-                f_interp = fn_avg;
-        }
-
-        float fn = (f_interp - min) / (max - min); // convert range to [0,1]
+        float fn = (f[x] - min) / (max - min); // convert range to [0,1]
+        // printf("%f\n", f[x]);
 
         Color c = heatmap(fn, colorscale);
         ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 0] = c.r;

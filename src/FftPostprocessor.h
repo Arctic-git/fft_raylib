@@ -10,18 +10,20 @@
 #define FftPostprocessor_h
 
 #include <stddef.h>
+#include <vector>
+
+float xToFreq(float x, float minFreq, float maxFreq, int logspacing);
+float freqToX(float freq, float minFreq, float maxFreq, int logspacing);
 
 class FftPostprocessor {
 public:
-    FftPostprocessor(int samplerate, int inputSize, int bins = 0, float minFreq = 22, float maxFreq = 22050, int notebased = 0, int fold = 0);
+    FftPostprocessor();
     ~FftPostprocessor();
-    void allocate(int samplerate, int inputSize, int bins = 0, float minFreq = 22, float maxFreq = 22050, int notebased = 0, int fold = 0);
+    void allocate(int samplerate, int inputSize, int bins = 0);
     void deallocate();
-    void process(float* input);
+    void process(float* input, int inputSize, int bins, int samplerate);
     float* getOutput();
     size_t getOutputSize();
-    static float xToFreq(float x, float minFreq, float maxFreq, int logspacing);
-    static float freqToX(float freq, float minFreq, float maxFreq, int logspacing);
 
     struct {
 
@@ -34,7 +36,11 @@ public:
         } smoothing;
 
         struct {
-            int logbinning = 1;
+            bool logbinning = true;
+            float minFreq = 22;
+            float maxFreq = 22050;
+            int notebased = 0;
+            bool fold = false;
         } binning;
 
         struct {
@@ -48,20 +54,18 @@ public:
     } config;
 
 private:
-    float* binned;
-    float* folded;
-    float* blurred;
-    float* blurredWork;
-    float* blurredSmoothed;
-    float* blurredSmoothedDecayed;
-    float* blurredSmoothedDecayedScaled;
-    int inputSize;
-    int bins;
+    std::vector<float> binned;
+    std::vector<float> folded;
+    std::vector<float> blurred;
+    std::vector<float> blurredWork;
+    std::vector<float> blurredSmoothed;
+    std::vector<float> blurredSmoothedDecayed;
+    std::vector<float> blurredSmoothedDecayedScaled;
+
+    int bins=-1;
+    int inputSize=-1;
     int outputSize;
-    float minFreq;
-    float maxFreq;
     int fold;
-    int samplerate;
 };
 
 #endif /* FftPostprocessor_hpp */

@@ -17,7 +17,7 @@
 		{
 			"type": "shell",
 			"label": "build shell",
-			"command": "cmake --build build --config Release --target run -j 10 --",
+			"command": "cmake --build build --target run -j 10 --",
 			"problemMatcher": [
 				"$gcc"
 			],
