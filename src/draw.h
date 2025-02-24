@@ -25,7 +25,7 @@ private:
 class fft_scrolltexture {
 public:
     fft_scrolltexture() = default;
-    void draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool scroll, float min = -66, float max = -12);
+    void draw(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, int colorscale, bool scroll, float min = -66, float max = -12);
 
 private:
     int y = 1;
@@ -36,9 +36,9 @@ private:
     Texture2D texture;
 };
 
-void xy_line(Rectangle b, float* l, float* r, int samples);
-void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min = -66, float max = -12);
-void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min = -66, float max = -12);
+void xy_line(Rectangle b, float* l, float* r, int samples, Color c);
+// void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, int colormode, float min = -66, float max = -12);
+void fft_conti2(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, bool wave_fill, bool wave_outline, int colormode, float min = -66, float max = -12);
 
 extern float draw_line_width;
 

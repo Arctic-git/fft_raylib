@@ -30,8 +30,8 @@ public:
         struct {
             float alphaUp = 1;
             float alphaDn = 0.4;
-            float minDbClamp = -0;
             float decay = -0.005f;
+            float minDbClamp = -0;
             int blurringPasses = 0;
         } smoothing;
 

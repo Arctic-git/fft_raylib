@@ -26,14 +26,15 @@
 #include <filesystem>
 #include <print>
 
-#define SAMPLERATE (44100)
 #define SP_RECT(b) b.x, b.y, b.width, b.height
 static int screenWidth = 400;
 static int screenHeight = 300;
 int target_fps = 80;
+#define SP_COLOR(c) c.r, c.g, c.b, c.a
 
 #define WAVE_SAMPLES_MAX (1024 * 64)
 int wave_samples = 2048;
+int samplerate = 44100;
 
 namespace fs = std::filesystem;
 fs::path path_res;
@@ -41,6 +42,15 @@ fs::path path_res;
 extern int rlDrawRenderBatch_cnt;
 extern int rlDrawRenderBatch_drawCounter;
 extern int rlDrawRenderBatch_vertex_cnt;
+
+static Color ImColor_to_Color(ImColor c) {
+    return {
+        (uint8_t)(c.Value.x * 255),
+        (uint8_t)(c.Value.y * 255),
+        (uint8_t)(c.Value.z * 255),
+        (uint8_t)(c.Value.w * 255),
+    };
+}
 
 static std::string system_capture(const std::string& cmd) {
     std::array<char, 128> buffer;
@@ -90,7 +100,7 @@ int main(int argc, char* argv[]) {
     int fftp_padding = 32768 / 2;
 
     Ringbuffer soundbuffer(1024 * 256);
-    AudioSourcePA audioSource(&soundbuffer, SAMPLERATE);
+    AudioSourcePA audioSource(&soundbuffer, samplerate);
     FftProcessor fftProcessor(wave_samples, std::max(fftp_padding / wave_samples, 1));
     fftProcessor.updateWindow(fftp_window);
     FftPostprocessor fftPostprocessorConti;
@@ -145,12 +155,13 @@ int main(int argc, char* argv[]) {
     bool wave_fill = true;
     bool xy = true;
     bool fft = true;
-    bool fft_logspacing = true;
     int fft_colormode = 0;
     bool fftscroll = true;
     int stereo_mode = 0;
     ImVec2 gui_padding{8, 8};
     float gui_seperator = 2;
+
+    ImColor xy_color = {SP_COLOR(WHITE)};
 
     bool wave_scissor = false;
     bool wavewindowed_scissor = false;
@@ -307,7 +318,7 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
             if (xy_scissor) BeginScissorMode(SP_RECT(b));
-            xy_line(b, l, r, wave_samples);
+            xy_line(b, l, r, wave_samples, ImColor_to_Color(xy_color));
             if (xy_scissor) EndScissorMode();
             ImGui::End();
         }
@@ -320,7 +331,7 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
 
-            fftPostprocessorConti.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), SAMPLERATE);
+            fftPostprocessorConti.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), samplerate);
             float my_fft_min = fft_min, my_fft_max = fft_max;
             if (!fftPostprocessorConti.config.scaling.mag2db) {
                 my_fft_min = powf(10, fft_min / 20);
@@ -328,7 +339,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (fft_scissor) BeginScissorMode(SP_RECT(b));
-            fft_conti2(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), wave_fill, wave_outline, fftPostprocessorConti.config.binning.logbinning, fft_colormode, my_fft_min, my_fft_max);
+            fft_conti2(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), fftPostprocessorConti.config.binning.minFreq, fftPostprocessorConti.config.binning.maxFreq, fftPostprocessorConti.config.binning.logbinning,  wave_fill, wave_outline, fft_colormode, my_fft_min, my_fft_max);
             if (fft_scissor) EndScissorMode();
             ImGui::End();
         }
@@ -341,14 +352,14 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
 
-            fftPostprocessorScroll.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), SAMPLERATE);
+            fftPostprocessorScroll.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), samplerate);
             float my_fft_min = fft_min, my_fft_max = fft_max;
             if (!fftPostprocessorScroll.config.scaling.mag2db) {
                 my_fft_min = powf(10, fft_min / 20);
                 my_fft_max = powf(10, fft_max / 20) / 2;
             }
 
-            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fftPostprocessorScroll.config.binning.logbinning, wavescroll_colorscale, wavescroll_scroll, my_fft_min, my_fft_max);
+            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fftPostprocessorConti.config.binning.minFreq, fftPostprocessorConti.config.binning.maxFreq, fftPostprocessorConti.config.binning.logbinning, wavescroll_colorscale, wavescroll_scroll, my_fft_min, my_fft_max);
             ImGui::End();
         }
         pm_fftscroll.sample_end();
@@ -383,12 +394,14 @@ int main(int argc, char* argv[]) {
 
                 draw_audiosource(audioSource);
                 if (ImGui::TreeNodeEx("Drawing", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
-                    ImGui::Checkbox("pause", &pause);
+                    ImGui::Checkbox("pause (p)", &pause);
+                    ImGui::Separator();
 
                     ImGui::Checkbox("wave_scissor", &wave_scissor);
                     ImGui::Checkbox("wavewindowed_scissor", &wavewindowed_scissor);
                     ImGui::Checkbox("xy_scissor", &xy_scissor);
                     ImGui::Checkbox("fft_scissor", &fft_scissor);
+                    ImGui::Separator();
 
                     ImGui::Checkbox("wave", &wave);
                     ImGui::SameLine();
@@ -402,7 +415,8 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("xy", &xy);
                     ImGui::Checkbox("fft", &fft);
                     ImGui::Checkbox("fftscroll", &fftscroll);
-                    ImGui::Checkbox("fft_logspacing", &fft_logspacing);
+                    ImGui::Separator();
+
                     ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
 
                     float minmax[2] = {fft_min, fft_max};
@@ -416,9 +430,14 @@ int main(int argc, char* argv[]) {
 
                     ImGui::SliderFloat("draw_line_width", &draw_line_width, 0.1, 8, "%.1f", ImGuiSliderFlags_Logarithmic);
 
+                    ImGui::ColorEdit4("xy color", (float*)&xy_color);
+                    ImGui::Separator();
+
                     ImGui::SliderFloat("gui_padding", &gui_padding.x, 0.0f, 20.0f, "%.0f");
                     gui_padding.y = gui_padding.x;
                     ImGui::SliderFloat("gui_seperator", &gui_seperator, 0.0f, 6.0f, "%.0f");
+                    ImGui::Separator();
+
 
                     if (ImGui::TreeNodeEx("FftProcessor", ImGuiTreeNodeFlags_DefaultOpen)) {
 
@@ -449,20 +468,28 @@ int main(int argc, char* argv[]) {
                         ImGui::SliderFloat("slope", &fftProcessor.config.slope, 0, 6, "%.0f", ImGuiSliderFlags_None);
                         ImGui::TreePop();
                     }
+                    
+                    ImGui::Separator();
+
+                    static bool copy = false;
+                    ImGui::Checkbox("copy fftp config", &copy);
+
                     int ppNr = 0;
-                    for (FftPostprocessor* pp : pps) {
+                    for (auto& pp : pps) {
                         ImGuiTreeNodeFlags flag = ImGuiTreeNodeFlags_None;
+                        if(ppNr && copy)
+                            pp->config = pps[ppNr-1]->config;
                         if (ppNames[ppNr][0] == '+') flag = ImGuiTreeNodeFlags_DefaultOpen;
                         if (ImGui::TreeNodeEx(ppNames[ppNr] + 1, flag)) {
                             ImGui::Text("OutputSize %d", (int)pp->getOutputSize());
-                            ImGui::SliderFloat("alphaUp", &pp->config.smoothing.alphaUp, 0, 1, "%.1f", ImGuiSliderFlags_None);
-                            ImGui::SliderFloat("alphaDn", &pp->config.smoothing.alphaDn, 0, 1, "%.1f", ImGuiSliderFlags_None);
-                            ImGui::SliderFloat("minDbClamp", &pp->config.smoothing.minDbClamp, -99, 0, "%.1f", ImGuiSliderFlags_None);
+                            ImGui::SliderFloat2("alphaUp/Down", &pp->config.smoothing.alphaUp, 0, 1, "%.1f", ImGuiSliderFlags_None);
                             ImGui::SliderFloat("decay", &pp->config.smoothing.decay, -0.0001f, 0.005f, "%.4f", ImGuiSliderFlags_None);
+                            // ImGui::SliderFloat("minDbClamp", &pp->config.smoothing.minDbClamp, -99, 0, "%.1f", ImGuiSliderFlags_None);
                             ImGui::SliderInt("blurringPasses", &pp->config.smoothing.blurringPasses, 0, 20);
 
                             ImGui::Checkbox("logbinning", (bool*)&pp->config.binning.logbinning);
-                            ImGui::Checkbox("removeBaselineOffset", (bool*)&pp->config.folding.removeBaselineOffset);
+                            ImGui::SliderFloat2("Freq min/max", &pp->config.binning.minFreq, 10, samplerate / 2, "%.0f", ImGuiSliderFlags_Logarithmic);
+                            // ImGui::Checkbox("removeBaselineOffset", (bool*)&pp->config.folding.removeBaselineOffset);
                             ImGui::Checkbox("mag2db", (bool*)&pp->config.scaling.mag2db);
 
                             ImGui::TreePop();
@@ -484,11 +511,16 @@ int main(int argc, char* argv[]) {
             float m_avg[10];
             const char* names[10];
             int cnt = 0;
+            float sum = 0;
             for (const auto& pair : measurements) {
                 names[cnt] = pair.first.c_str();
-                m_avg[cnt] = pair.second.avg_s*1000;
+                m_avg[cnt] = pair.second.avg_s * 1000;
+                sum += m_avg[cnt];
                 cnt++;
             }
+            // names[cnt] = "free";
+            // m_avg[cnt] =  1000/target_fps - sum;
+            // cnt++;
 
             if (ImPlot::BeginPlot("PerfMon", ImVec2(350, 250), ImPlotFlags_NoMouseText)) {
                 int flags = ImPlotAxisFlags_NoDecorations | ImPlotAxisFlags_Lock;
@@ -515,7 +547,7 @@ int main(int argc, char* argv[]) {
 
         pm_swap.sample_begin();
         EndDrawing();
-        // SwapScreenBuffer();            
+        // SwapScreenBuffer();
         pm_swap.sample_end();
     }
 

@@ -6,6 +6,7 @@
 #define SP_V2(v) v.x, v.y
 
 extern int target_fps;
+extern int samplerate;
 
 void static_checkbox(const char* label, bool val) {
     ImGui::Checkbox(label, &val);
@@ -128,7 +129,6 @@ void draw_window(int argc, char* argv[]) {
 
         ImGui::SeparatorText("ImGui");
 
-
         ImGui::TreePop();
     }
 }
@@ -157,7 +157,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
         }
         ImGui::SameLine();
         if (ImGui::Button("openDevice")) {
-            audioSource.openDevice(selectedInputDevice, selectedOutputDevice, 44100);
+            audioSource.openDevice(selectedInputDevice, selectedOutputDevice, samplerate);
         }
         ImGui::SameLine();
         ImGui::Checkbox("enableLoopback", (bool*)&audioSource.config.enableLoopback);
@@ -167,7 +167,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
                 const bool is_selected = (selectedInputDevice == n);
                 if (ImGui::Selectable(devices[n].name.c_str(), is_selected)) {
                     selectedInputDevice = n;
-                    audioSource.openDevice(selectedInputDevice, selectedOutputDevice, 44100);
+                    audioSource.openDevice(selectedInputDevice, selectedOutputDevice, samplerate);
                 }
 
                 // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -182,7 +182,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
                 const bool is_selected = (selectedOutputDevice == n);
                 if (ImGui::Selectable(devices[n].name.c_str(), is_selected)) {
                     selectedOutputDevice = n;
-                    audioSource.openDevice(selectedInputDevice, selectedOutputDevice, 44100);
+                    audioSource.openDevice(selectedInputDevice, selectedOutputDevice, samplerate);
                 }
 
                 // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -191,6 +191,15 @@ void draw_audiosource(AudioSourcePA& audioSource) {
             }
             ImGui::EndCombo();
         }
+
+        const int smp_int[] = {44100, 48000, 88200, 96000, 176400, 192000};
+        const char* smp_chr[] = {"44100", "48000", "88200", "96000", "176400", "192000"};
+        static int smp_idx = 0;
+        if(ImGui::Combo("samplerate", &smp_idx, smp_chr, IM_ARRAYSIZE(smp_chr))){
+            samplerate = smp_int[smp_idx];
+            audioSource.openDevice(selectedInputDevice, selectedOutputDevice, samplerate);
+        }
+
         ImGui::SliderFloat("gain", &audioSource.config.gain, 0, 30, "%.1f", ImGuiSliderFlags_Logarithmic);
         ImGui::SliderFloat("gainLoopback", &audioSource.config.gainLoopback, 0.01, 2, "%.2f", ImGuiSliderFlags_Logarithmic);
         ImGui::TreePop();

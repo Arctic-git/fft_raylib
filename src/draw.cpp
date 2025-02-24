@@ -51,20 +51,20 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
         rlBegin(RL_QUADS);
         for (int i = 0; i < wavebins - 1; i++) {
             Vector2 v1 = {
-                b.x + (float)i / (wavebins - 1) * b.width,
-                b.y + b.height * 0.5f,
+                b.x + b.width * (1 - (float)i / (wavebins - 1)),
+                b.y + b.height / 2,
             };
             Vector2 v2 = {
-                b.x + (float)i / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)lwmax[i] / 2 + 0.5f),
+                b.x + b.width * (1 - (float)i / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmax[i],
             };
             Vector2 v3 = {
-                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)lwmax[i + 1] / 2 + 0.5f),
+                b.x + b.width * (1 - (float)(i + 1) / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmax[i + 1],
             };
             Vector2 v4 = {
-                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
-                b.y + b.height * 0.5f,
+                b.x + b.width * (1 - (float)(i + 1) / (wavebins - 1)),
+                b.y + b.height / 2,
             };
 
             Color color = WHITE;
@@ -85,20 +85,20 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
         rlBegin(RL_QUADS);
         for (int i = 0; i < wavebins - 1; i++) {
             Vector2 v1 = {
-                b.x + (float)i / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)lwmin[i] / 2 + 0.5f),
+                b.x + b.width * (1 - (float)i / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmin[i],
             };
             Vector2 v2 = {
-                b.x + (float)i / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)lwmax[i] / 2 + 0.5f),
+                b.x + b.width * (1 - (float)i / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmax[i],
             };
             Vector2 v3 = {
-                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)lwmax[i + 1] / 2 + 0.5f),
+                b.x + b.width * (1 - (float)(i + 1) / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmax[i + 1],
             };
             Vector2 v4 = {
-                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)lwmin[i + 1] / 2 + 0.5f),
+                b.x + b.width * (1 - (float)(i + 1) / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmin[i + 1],
             };
 
             Color color = WHITE;
@@ -115,12 +115,12 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
     if (wave_outline) {
         for (int i = 0; i < wavebins - 1; i++) {
             Vector2 v_1 = {
-                b.x + (float)i / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)(lwmin[i] / 2) + 0.5f),
+                b.x + b.width * (1 - (float)i / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmin[i],
             };
             Vector2 v_2 = {
-                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)(lwmin[i + 1] / 2) + 0.5f),
+                b.x + b.width * (1 - (float)(i + 1) / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmin[i + 1],
             };
 
             DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE);
@@ -128,12 +128,12 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
         }
         for (int i = 0; i < wavebins - 1; i++) {
             Vector2 v_1 = {
-                b.x + (float)i / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)(lwmax[i] / 2) + 0.5f),
+                b.x + b.width * (1 - (float)i / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmax[i],
             };
             Vector2 v_2 = {
-                b.x + (float)(i + 1) / (wavebins - 1) * b.width,
-                b.y + b.height * ((float)(lwmax[i + 1] / 2) + 0.5f),
+                b.x + b.width * (1 - (float)(i + 1) / (wavebins - 1)),
+                b.y + b.height / 2 - b.height / 2 * lwmax[i + 1],
             };
 
             DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE);
@@ -211,7 +211,7 @@ void wave_scrolltexture::draw(Rectangle b, float* l, int samples, bool scroll) {
 
     x = (x + 1) % texture.width;
     for (int y = 0; y < texture.height; y++) {
-        float y_rel = (float)y / (texture.height - 1) * 2 - 1; //-1 to 1
+        float y_rel = (1- (float)y / (texture.height - 1)) * 2 - 1; //-1 to 1
         int r = 0, g = 0, b = 0;
         Color c = {};
 
@@ -242,19 +242,35 @@ void wave_scrolltexture::draw(Rectangle b, float* l, int samples, bool scroll) {
     EndShaderMode();
 }
 
-void xy_line(Rectangle b, float* l, float* r, int samples) {
+void xy_line(Rectangle b, float* l, float* r, int samples, Color c) {
+    float alpha = c.a;
+
     for (int i = 0; i < samples - 1; i++) {
 
+        Vector2 s_1 = {
+            Clamp(l[i], -1, 1),
+            Clamp(r[i], -1, 1),
+        };
+        Vector2 s_2 = {
+            Clamp(l[i + 1], -1, 1),
+            Clamp(r[i + 1], -1, 1),
+        };
         Vector2 v_1 = {
-            b.x + b.width / 2 + b.width / 2 * Clamp(l[i], -1, 1),
-            b.y + b.height / 2 + b.height / 2 * Clamp(r[i], -1, 1),
+            b.x + b.width / 2 + b.width / 2 * s_1.x,
+            b.y + b.height / 2 - b.height / 2 * s_1.y,
         };
         Vector2 v_2 = {
-            b.x + b.width / 2 + b.width / 2 * Clamp(l[i + 1], -1, 1),
-            b.y + b.height / 2 + b.height / 2 * Clamp(r[i + 1], -1, 1),
+            b.x + b.width / 2 + b.width / 2 * s_2.x,
+            b.y + b.height / 2 - b.height / 2 * s_2.y,
         };
+
+        // if (c.a == 254) {
+        float len = Vector2Length({s_2.x - s_1.x, s_2.y - s_1.y});
+        c.a = alpha * Clamp(1 - len, 0, 1);
+        // }
+
         // DrawLineEx(v_1, v_2, draw_line_width, WHITE); //6 vertecies per line
-        DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE); // 4 vertecies per line
+        DrawLineExDualcolor(v_1, v_2, draw_line_width, c, c); // 4 vertecies per line
         // DrawPixelV(v_1, WHITE);
         // DrawCircleV(v_1, 1, WHITE);
     }
@@ -453,18 +469,18 @@ Color heatmap(float value, int colormode) {
 
 const char* colorscale_names[19] = {"my_white", "my_jet", "my_blackjet", "gqrx", "Parula", "Heat", "Jet", "Turbo", "Hot", "Gray", "Magma", "Inferno", "Plasma", "Viridis", "Cividis", "Github", "Cubehelix", "MyGqrxt", "MyGqrxt2"};
 
-void draw_mouse_overlay(Rectangle b, bool logspacing) {
+void draw_mouse_overlay(Rectangle b, float minFreq, float maxFreq, bool logspacing) {
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         Vector2 mpr = GetMousePositionRelativeTo(b);
         if (mpr.x > 0 && mpr.x < 1 && mpr.y > 0 && mpr.y < 1) {
-            float freq = xToFreq(mpr.x, 22, 22050, logspacing);
+            float freq = xToFreq(mpr.x, minFreq, maxFreq, logspacing);
             // float amplitude = min + (1 - mpr.y) * (max - min); // data[int(round(bin))];
             float midi = freqToMidi(freq);
             float midiH = roundf(midi) + 0.5;
             float midiL = roundf(midi) - 0.5;
 
-            float px_midiH = freqToX(midiToFreq(midiH), 22, 22050, logspacing) * b.width + b.x;
-            float px_midiL = freqToX(midiToFreq(midiL), 22, 22050, logspacing) * b.width + b.x;
+            float px_midiH = freqToX(midiToFreq(midiH), minFreq, maxFreq, logspacing) * b.width + b.x;
+            float px_midiL = freqToX(midiToFreq(midiL), minFreq, maxFreq, logspacing) * b.width + b.x;
             DrawRectangle(px_midiL, b.y, px_midiH - px_midiL, b.height, {255, 255, 255, 32});
             DrawLineEx({px_midiL, b.y}, {px_midiL, b.y + b.height}, draw_line_width, WHITE);
             DrawLineEx({px_midiH, b.y}, {px_midiH, b.y + b.height}, draw_line_width, WHITE);
@@ -486,94 +502,94 @@ void draw_mouse_overlay(Rectangle b, bool logspacing) {
     }
 }
 
-void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min, float max) {
-    float bw = float(44100 / 2) / (samples - 1);
+// void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min, float max) {
+//     float bw = float(44100 / 2) / (samples - 1);
 
-    if (wave_fill) {
-        rlBegin(RL_QUADS);
-        for (int i = 0; i < samples - 1; i++) {
-            float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
-            float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
+//     if (wave_fill) {
+//         rlBegin(RL_QUADS);
+//         for (int i = 0; i < samples - 1; i++) {
+//             float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
+//             float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
 
-            fn = std::max(0.f, fn);
-            fn_1 = std::max(0.f, fn_1);
-            // fn = std::min(1.f, fn);
-            // fn_1 = std::min(1.f, fn_1);
+//             fn = std::max(0.f, fn);
+//             fn_1 = std::max(0.f, fn_1);
+//             // fn = std::min(1.f, fn);
+//             // fn_1 = std::min(1.f, fn_1);
 
-            float relativex = freqToX(i * bw, 22, 22050, logspacing);
-            float relativex_1 = freqToX((i + 1) * bw, 22, 22050, logspacing);
-            if (relativex_1 < 0)
-                continue;
+//             float relativex = freqToX(i * bw, 22, 22050, logspacing);
+//             float relativex_1 = freqToX((i + 1) * bw, 22, 22050, logspacing);
+//             if (relativex_1 < 0)
+//                 continue;
 
-            Vector2 v1 = {
-                b.x + b.width * relativex,
-                b.y + b.height,
-            };
-            Vector2 v2 = {
-                b.x + b.width * relativex,
-                b.y + b.height - b.height * fn,
-            };
-            Vector2 v3 = {
-                b.x + b.width * relativex_1,
-                b.y + b.height - b.height * fn_1,
-            };
-            Vector2 v4 = {
-                b.x + b.width * relativex_1,
-                b.y + b.height,
-            };
+//             Vector2 v1 = {
+//                 b.x + b.width * relativex,
+//                 b.y + b.height,
+//             };
+//             Vector2 v2 = {
+//                 b.x + b.width * relativex,
+//                 b.y + b.height - b.height * fn,
+//             };
+//             Vector2 v3 = {
+//                 b.x + b.width * relativex_1,
+//                 b.y + b.height - b.height * fn_1,
+//             };
+//             Vector2 v4 = {
+//                 b.x + b.width * relativex_1,
+//                 b.y + b.height,
+//             };
 
-            // Color color = WHITE;
-            Color color = fftColor(relativex_1, (i + 1) * bw, colormode);
-            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn_1)))); //-255 + 255*fn_1
-            rlVertex2f(v4.x, v4.y);
-            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn_1)));
-            rlVertex2f(v3.x, v3.y);
-            color = fftColor(relativex, i * bw, colormode);
-            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn)));
-            rlVertex2f(v2.x, v2.y);
-            rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn))));
-            rlVertex2f(v1.x, v1.y);
-        }
-        rlEnd();
-    }
+//             // Color color = WHITE;
+//             Color color = fftColor(relativex_1, (i + 1) * bw, colormode);
+//             rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn_1)))); //-255 + 255*fn_1
+//             rlVertex2f(v4.x, v4.y);
+//             rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn_1)));
+//             rlVertex2f(v3.x, v3.y);
+//             color = fftColor(relativex, i * bw, colormode);
+//             rlColor4ub(color.r, color.g, color.b, std::min(255.0f, 255 * (fn)));
+//             rlVertex2f(v2.x, v2.y);
+//             rlColor4ub(color.r, color.g, color.b, std::min(255.0f, std::max(0.0f, (-255 + 255 * fn))));
+//             rlVertex2f(v1.x, v1.y);
+//         }
+//         rlEnd();
+//     }
 
-    if (wave_outline) {
-        for (int i = 0; i < samples - 1; i++) {
-            float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
-            float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
-            fn = std::max(-8.f / b.height, fn);
-            fn_1 = std::max(-8.f / b.height, fn_1); // line can be 8 px below (linewidth/2)
+//     if (wave_outline) {
+//         for (int i = 0; i < samples - 1; i++) {
+//             float fn = (f[i] - min) / (max - min);       // convert range to [0,1]
+//             float fn_1 = (f[i + 1] - min) / (max - min); // convert range to [0,1]
+//             fn = std::max(-8.f / b.height, fn);
+//             fn_1 = std::max(-8.f / b.height, fn_1); // line can be 8 px below (linewidth/2)
 
-            float relativex = freqToX(i * bw, 22, 22050, logspacing);
-            float relativex_1 = freqToX((i + 1) * bw, 22, 22050, logspacing);
-            if (relativex_1 < 0)
-                continue;
+//             float relativex = freqToX(i * bw, 22, 22050, logspacing);
+//             float relativex_1 = freqToX((i + 1) * bw, 22, 22050, logspacing);
+//             if (relativex_1 < 0)
+//                 continue;
 
-            Vector2 v_1 = {
-                b.x + b.width * relativex,
-                b.y + b.height - b.height * fn,
-            };
-            Vector2 v_2 = {
-                b.x + b.width * relativex_1,
-                b.y + b.height - b.height * fn_1,
-            };
+//             Vector2 v_1 = {
+//                 b.x + b.width * relativex,
+//                 b.y + b.height - b.height * fn,
+//             };
+//             Vector2 v_2 = {
+//                 b.x + b.width * relativex_1,
+//                 b.y + b.height - b.height * fn_1,
+//             };
 
-            // Color color = BLACK;
-            // Color color = hsv(relativex * 360.0, 0.8, 1);
-            Color color = fftColor(relativex, (i)*bw, colormode, 0.8);
-            Color color_1 = fftColor(relativex_1, (i + 1) * bw, colormode, 0.8);
-            DrawLineExDualcolor(v_1, v_2, draw_line_width, color, color_1);
-            // DrawCircleV(v_1, 1, WHITE);
-        }
+//             // Color color = BLACK;
+//             // Color color = hsv(relativex * 360.0, 0.8, 1);
+//             Color color = fftColor(relativex, (i)*bw, colormode, 0.8);
+//             Color color_1 = fftColor(relativex_1, (i + 1) * bw, colormode, 0.8);
+//             DrawLineExDualcolor(v_1, v_2, draw_line_width, color, color_1);
+//             // DrawCircleV(v_1, 1, WHITE);
+//         }
 
-        // // hides line on silence
-        // DrawLineEx({b.x, b.y + b.height + 1}, {b.x + b.width, b.y + b.height + 1}, 2, BLACK);
-    }
+//         // // hides line on silence
+//         // DrawLineEx({b.x, b.y + b.height + 1}, {b.x + b.width, b.y + b.height + 1}, 2, BLACK);
+//     }
 
-    draw_mouse_overlay(b, logspacing);
-}
+//     draw_mouse_overlay(b, logspacing);
+// }
 
-void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, bool logspacing, int colormode, float min, float max) {
+void fft_conti2(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, bool wave_fill, bool wave_outline, int colormode, float min, float max) {
 
     if (wave_fill) {
         rlBegin(RL_QUADS);
@@ -588,8 +604,6 @@ void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_ou
 
             float relativex = (float)(i) / (samples - 1);
             float relativex_1 = (float)(i + 1) / (samples - 1);
-            if (relativex_1 < 0)
-                continue;
 
             Vector2 v1 = {
                 b.x + b.width * relativex,
@@ -632,8 +646,6 @@ void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_ou
 
             float relativex = (float)(i) / (samples - 1);
             float relativex_1 = (float)(i + 1) / (samples - 1);
-            if (relativex_1 < 0)
-                continue;
 
             Vector2 v_1 = {
                 b.x + b.width * relativex,
@@ -656,10 +668,10 @@ void fft_conti2(Rectangle b, float* f, int samples, bool wave_fill, bool wave_ou
         // DrawLineEx({b.x, b.y + b.height + 1}, {b.x + b.width, b.y + b.height + 1}, 2, BLACK);
     }
 
-    draw_mouse_overlay(b, logspacing);
+    draw_mouse_overlay(b, minFreq, maxFreq, logspacing);
 }
 
-void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing, int colorscale, bool scroll, float min, float max) {
+void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, int colorscale, bool scroll, float min, float max) {
     if (b.width <= 0 || b.height <= 0) return;
 
     if (!shader.id) {
@@ -691,7 +703,6 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing
         // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
     }
 
-
     y = (y - 1 + texture.height) % texture.height;
     // printf("\n\n");
 
@@ -721,5 +732,5 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, bool logspacing
     DrawTexturePro(texture, {0, 0, (float)texture.width, (float)texture.height}, b, {0, 0}, 0, WHITE);
     EndShaderMode();
 
-    draw_mouse_overlay(b, logspacing);
+    draw_mouse_overlay(b, minFreq, maxFreq, logspacing);
 }

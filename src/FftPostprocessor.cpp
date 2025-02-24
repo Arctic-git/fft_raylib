@@ -122,6 +122,9 @@ static void bin_lerp(const float* input, int inputSize, float* output, int outpu
         int bin_1 = std::round(xToFreq(x_rel_1, minFreq, maxFreq, logspacing) / bw);
         int num_bins = bin_1 - bin + 1;
 
+        if (bin_1 >= inputSize)
+            continue;
+
         float f_interp = 0;
         if (lerp && num_bins <= 2) {
             float x_rel = (float)(x) / (outputSize - 1);
