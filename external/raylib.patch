@@ -1,0 +1,22 @@
+diff --git a/src/rlgl.h b/src/rlgl.h
+index 245fd059..c3784f3b 100644
+--- a/src/rlgl.h
++++ b/src/rlgl.h
+@@ -2900,10 +2900,17 @@ void rlUnloadRenderBatch(rlRenderBatch batch)
+ #endif
+ }
+ 
++int rlDrawRenderBatch_cnt=0;
++int rlDrawRenderBatch_drawCounter=0;
++int rlDrawRenderBatch_vertex_cnt=0;
+ // Draw render batch
+ // NOTE: We require a pointer to reset batch and increase current buffer (multi-buffer)
+ void rlDrawRenderBatch(rlRenderBatch *batch)
+ {
++    rlDrawRenderBatch_cnt+=RLGL.State.vertexCounter > 0;
++    rlDrawRenderBatch_drawCounter+=(RLGL.State.vertexCounter > 0) * batch->drawCounter;
++    rlDrawRenderBatch_vertex_cnt+=RLGL.State.vertexCounter;
++    
+ #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
+     // Update batch vertex buffers
+     //------------------------------------------------------------------------------------------------------------

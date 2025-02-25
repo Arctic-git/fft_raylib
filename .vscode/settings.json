@@ -67,7 +67,8 @@
         "rlgl.h": "c",
         "math.h": "c",
         "span": "cpp",
-        "system_error": "cpp"
+        "system_error": "cpp",
+        "filesystem": "cpp"
     },
     //"cmake.debugConfig": {
     //    "MIMode": "lldb"

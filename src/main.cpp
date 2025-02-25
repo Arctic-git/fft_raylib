@@ -39,9 +39,9 @@ int samplerate = 44100;
 namespace fs = std::filesystem;
 fs::path path_res;
 
-/*extern*/ int rlDrawRenderBatch_cnt=0;
-/*extern*/ int rlDrawRenderBatch_drawCounter=0;
-/*extern*/ int rlDrawRenderBatch_vertex_cnt=0;
+extern int rlDrawRenderBatch_cnt;
+extern int rlDrawRenderBatch_drawCounter;
+extern int rlDrawRenderBatch_vertex_cnt;
 
 static Color ImColor_to_Color(ImColor c) {
     return {
