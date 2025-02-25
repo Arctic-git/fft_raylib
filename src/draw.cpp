@@ -211,7 +211,7 @@ void wave_scrolltexture::draw(Rectangle b, float* l, int samples, bool scroll) {
 
     x = (x + 1) % texture.width;
     for (int y = 0; y < texture.height; y++) {
-        float y_rel = (1- (float)y / (texture.height - 1)) * 2 - 1; //-1 to 1
+        float y_rel = (1 - (float)y / (texture.height - 1)) * 2 - 1; //-1 to 1
         int r = 0, g = 0, b = 0;
         Color c = {};
 
@@ -671,7 +671,7 @@ void fft_conti2(Rectangle b, float* f, int samples, float minFreq, float maxFreq
     draw_mouse_overlay(b, minFreq, maxFreq, logspacing);
 }
 
-void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, int colorscale, bool scroll, float min, float max) {
+void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, int colorscale, bool scroll, float min, float max, float y_multi) {
     if (b.width <= 0 || b.height <= 0) return;
 
     if (!shader.id) {
@@ -680,8 +680,10 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, 
         yScrollOffs_location = GetShaderLocation(shader, "yScrollOffs");
     }
 
-    int width = std::ceilf(b.width);
-    int height = std::ceilf(b.height);
+    // image width should be scaled with GetWindowScaleDPI() to get maximum resolution. but makes scroll slower ofc.
+    // int width = std::ceilf(b.width);
+    int width = samples;
+    int height = std::ceil(b.height * y_multi);
     if (!img.data || width != img.width || height != img.height) {
         if (!img.data) {
             // create image
@@ -699,24 +701,23 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, 
 
         UnloadTexture(texture);
         texture = LoadTextureFromImage(img);
-        SetTextureFilter(texture, TEXTURE_FILTER_POINT);
-        // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+        SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
+        // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP); 
     }
 
     y = (y - 1 + texture.height) % texture.height;
-    // printf("\n\n");
-
-    assert(samples == texture.width);
 
     for (int x = 0; x < texture.width; x++) {
-        float fn = (f[x] - min) / (max - min); // convert range to [0,1]
+        // int bin = roundf((float)x / (texture.width - 1) * (samples - 1)); // needed if samples != texture width
+        int bin = x;
+        float fn = (f[bin] - min) / (max - min); // convert range to [0,1]
         // printf("%f\n", f[x]);
 
         Color c = heatmap(fn, colorscale);
-        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 0] = c.r;
+        ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 0] = c.r; // whole image needed for resizing
         ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 1] = c.g;
         ((uint8_t*)img.data)[(y * texture.width + x) * 3 + 2] = c.b;
-        data_update[x * 3 + 0] = c.r;
+        data_update[x * 3 + 0] = c.r; // efficient transfer of only one line
         data_update[x * 3 + 1] = c.g;
         data_update[x * 3 + 2] = c.b;
     }

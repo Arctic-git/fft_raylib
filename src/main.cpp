@@ -157,6 +157,8 @@ int main(int argc, char* argv[]) {
     bool fft = true;
     int fft_colormode = 0;
     bool fftscroll = true;
+    bool fftscroll_dpi = false;
+    float fftscroll_ymulti = 1;
     int stereo_mode = 0;
     ImVec2 gui_padding{8, 8};
     float gui_seperator = 2;
@@ -339,7 +341,7 @@ int main(int argc, char* argv[]) {
             }
 
             if (fft_scissor) BeginScissorMode(SP_RECT(b));
-            fft_conti2(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), fftPostprocessorConti.config.binning.minFreq, fftPostprocessorConti.config.binning.maxFreq, fftPostprocessorConti.config.binning.logbinning,  wave_fill, wave_outline, fft_colormode, my_fft_min, my_fft_max);
+            fft_conti2(b, fftPostprocessorConti.getOutput(), fftPostprocessorConti.getOutputSize(), fftPostprocessorConti.config.binning.minFreq, fftPostprocessorConti.config.binning.maxFreq, fftPostprocessorConti.config.binning.logbinning, wave_fill, wave_outline, fft_colormode, my_fft_min, my_fft_max);
             if (fft_scissor) EndScissorMode();
             ImGui::End();
         }
@@ -352,14 +354,15 @@ int main(int argc, char* argv[]) {
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
             Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
 
-            fftPostprocessorScroll.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), std::ceil(b.width), samplerate);
+            int bins = fftscroll_dpi ? std::ceil(b.width * GetWindowScaleDPI().x) : std::ceil(b.width);
+            fftPostprocessorScroll.process(fftProcessor.getOutput(), fftProcessor.getOutputSize(), bins, samplerate);
             float my_fft_min = fft_min, my_fft_max = fft_max;
             if (!fftPostprocessorScroll.config.scaling.mag2db) {
                 my_fft_min = powf(10, fft_min / 20);
                 my_fft_max = powf(10, fft_max / 20) / 2;
             }
 
-            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fftPostprocessorConti.config.binning.minFreq, fftPostprocessorConti.config.binning.maxFreq, fftPostprocessorConti.config.binning.logbinning, wavescroll_colorscale, wavescroll_scroll, my_fft_min, my_fft_max);
+            fft_scrolltexture1.draw(b, fftPostprocessorScroll.getOutput(), fftPostprocessorScroll.getOutputSize(), fftPostprocessorConti.config.binning.minFreq, fftPostprocessorConti.config.binning.maxFreq, fftPostprocessorConti.config.binning.logbinning, wavescroll_colorscale, wavescroll_scroll, my_fft_min, my_fft_max, fftscroll_ymulti);
             ImGui::End();
         }
         pm_fftscroll.sample_end();
@@ -397,12 +400,6 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("pause (p)", &pause);
                     ImGui::Separator();
 
-                    ImGui::Checkbox("wave_scissor", &wave_scissor);
-                    ImGui::Checkbox("wavewindowed_scissor", &wavewindowed_scissor);
-                    ImGui::Checkbox("xy_scissor", &xy_scissor);
-                    ImGui::Checkbox("fft_scissor", &fft_scissor);
-                    ImGui::Separator();
-
                     ImGui::Checkbox("wave", &wave);
                     ImGui::SameLine();
                     ImGui::Checkbox("wave_outline", &wave_outline);
@@ -415,6 +412,17 @@ int main(int argc, char* argv[]) {
                     ImGui::Checkbox("xy", &xy);
                     ImGui::Checkbox("fft", &fft);
                     ImGui::Checkbox("fftscroll", &fftscroll);
+                    ImGui::SameLine();
+                    ImGui::Checkbox("dpi", &fftscroll_dpi);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(100);
+                    ImGui::SliderFloat("ymulti", &fftscroll_ymulti, 0.2, 4, "%.1f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::Separator();
+
+                    ImGui::Checkbox("wave_scissor", &wave_scissor);
+                    ImGui::Checkbox("wavewindowed_scissor", &wavewindowed_scissor);
+                    ImGui::Checkbox("xy_scissor", &xy_scissor);
+                    ImGui::Checkbox("fft_scissor", &fft_scissor);
                     ImGui::Separator();
 
                     ImGui::SliderInt("fft_colormode", &fft_colormode, 0, 1);
@@ -437,7 +445,6 @@ int main(int argc, char* argv[]) {
                     gui_padding.y = gui_padding.x;
                     ImGui::SliderFloat("gui_seperator", &gui_seperator, 0.0f, 6.0f, "%.0f");
                     ImGui::Separator();
-
 
                     if (ImGui::TreeNodeEx("FftProcessor", ImGuiTreeNodeFlags_DefaultOpen)) {
 
@@ -468,7 +475,7 @@ int main(int argc, char* argv[]) {
                         ImGui::SliderFloat("slope", &fftProcessor.config.slope, 0, 6, "%.0f", ImGuiSliderFlags_None);
                         ImGui::TreePop();
                     }
-                    
+
                     ImGui::Separator();
 
                     static bool copy = false;
@@ -477,8 +484,8 @@ int main(int argc, char* argv[]) {
                     int ppNr = 0;
                     for (auto& pp : pps) {
                         ImGuiTreeNodeFlags flag = ImGuiTreeNodeFlags_None;
-                        if(ppNr && copy)
-                            pp->config = pps[ppNr-1]->config;
+                        if (ppNr && copy)
+                            pp->config = pps[ppNr - 1]->config;
                         if (ppNames[ppNr][0] == '+') flag = ImGuiTreeNodeFlags_DefaultOpen;
                         if (ImGui::TreeNodeEx(ppNames[ppNr] + 1, flag)) {
                             ImGui::Text("OutputSize %d", (int)pp->getOutputSize());
@@ -487,8 +494,11 @@ int main(int argc, char* argv[]) {
                             // ImGui::SliderFloat("minDbClamp", &pp->config.smoothing.minDbClamp, -99, 0, "%.1f", ImGuiSliderFlags_None);
                             ImGui::SliderInt("blurringPasses", &pp->config.smoothing.blurringPasses, 0, 20);
 
-                            ImGui::Checkbox("logbinning", (bool*)&pp->config.binning.logbinning);
                             ImGui::SliderFloat2("Freq min/max", &pp->config.binning.minFreq, 10, samplerate / 2, "%.0f", ImGuiSliderFlags_Logarithmic);
+                            ImGui::Checkbox("bin_logbinning", (bool*)&pp->config.binning.logbinning);
+                            ImGui::SameLine();
+                            ImGui::Checkbox("bin_avgmode", (bool*)&pp->config.binning.avgmode);
+                            ImGui::SameLine();
                             // ImGui::Checkbox("removeBaselineOffset", (bool*)&pp->config.folding.removeBaselineOffset);
                             ImGui::Checkbox("mag2db", (bool*)&pp->config.scaling.mag2db);
 

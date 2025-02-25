@@ -105,10 +105,9 @@ static void bin(const float* input, int inputSize, float* output, int outputSize
     }
 }
 
-static void bin_lerp(const float* input, int inputSize, float* output, int outputSize, float samplerate, float minFreq, float maxFreq, int logspacing, int db_correct_lerp) {
+static void bin_lerp(const float* input, int inputSize, float* output, int outputSize, float samplerate, float minFreq, float maxFreq, int logspacing, bool bin_avgmode, int db_correct_lerp) {
     float bw = float(samplerate / 2) / (inputSize - 1);
     bool lerp = true;
-    bool bin_avgmode = true;
 
     for (int x = 0; x < outputSize; x++) {
 
@@ -241,7 +240,7 @@ void FftPostprocessor::process(float* input, int inputSize, int bins, int sample
 
     if (inputSize != outputSize) {
         // bin(input, inputSize, binned.data(), bins, samplerate, config.binning.minFreq, config.binning.maxFreq, config.binning.logbinning);
-        bin_lerp(input, inputSize, binned.data(), binned.size(), samplerate, config.binning.minFreq, config.binning.maxFreq, config.binning.logbinning, config.scaling.mag2db);
+        bin_lerp(input, inputSize, binned.data(), binned.size(), samplerate, config.binning.minFreq, config.binning.maxFreq, config.binning.logbinning, config.binning.avgmode, config.scaling.mag2db);
     } else {
         memcpy(binned.data(), input, inputSize * sizeof(float));
     }

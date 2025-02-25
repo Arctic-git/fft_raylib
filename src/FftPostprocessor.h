@@ -37,6 +37,7 @@ public:
 
         struct {
             bool logbinning = true;
+            bool avgmode = true;
             float minFreq = 22;
             float maxFreq = 22050;
             int notebased = 0;
