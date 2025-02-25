@@ -156,7 +156,7 @@ void wave_scrolltexture::draw(Rectangle b, float* l, int samples, bool scroll) {
     if (b.width <= 0 || b.height <= 0) return;
 
     if (!shader.id) {
-        shader = LoadShader(NULL, fs::path(path_res).append("scroll.fs").c_str());
+        shader = LoadShader(NULL, fs::path(path_res).append("scroll.fs").string().c_str());
         xScrollOffs_location = GetShaderLocation(shader, "xScrollOffs");
         yScrollOffs_location = GetShaderLocation(shader, "yScrollOffs");
     }
@@ -675,7 +675,7 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, 
     if (b.width <= 0 || b.height <= 0) return;
 
     if (!shader.id) {
-        shader = LoadShader(NULL, fs::path(path_res).append("scroll.fs").c_str());
+        shader = LoadShader(NULL, fs::path(path_res).append("scroll.fs").string().c_str());
         xScrollOffs_location = GetShaderLocation(shader, "xScrollOffs");
         yScrollOffs_location = GetShaderLocation(shader, "yScrollOffs");
     }

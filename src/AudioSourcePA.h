@@ -4,6 +4,7 @@
 #include "Ringbuffer.h"
 #include "portaudio.h"
 #include <vector>
+#include <string>
 
 typedef struct {
     std::string name;

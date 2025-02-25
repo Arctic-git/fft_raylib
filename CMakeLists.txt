@@ -33,13 +33,19 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="../Resources")
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_SETTINGS_BASH="$HOME/Library/Application Support/${PROJECT_NAME}")
 else()
+#file(COPY resources DESTINATION  ${CMAKE_BINARY_DIR}) # doesnt cause cmake update
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/resources/")
+foreach(ASSET ${resource_files})
+    configure_file(${ASSET} "${CMAKE_BINARY_DIR}/resources/" COPYONLY) # causes cmake to watch the resources
+endforeach()
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="resources") 
 endif()
 
 # raylib
 # find_package(raylib REQUIRED)
 add_subdirectory(external/raylib)
-set_property(TARGET raylib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE) #-flto
+#set_property(TARGET raylib PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE) #-flto
 target_compile_definitions(raylib PRIVATE RL_DEFAULT_BATCH_BUFFER_ELEMENTS=65536)
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
 
@@ -63,15 +69,16 @@ target_link_libraries(ImGui PRIVATE raylib)
 target_link_libraries(${PROJECT_NAME} PRIVATE ImGui)
 
 # portaudio
-option(PA_BUILD_SHARED_LIBS OFF)
+set(PA_BUILD_SHARED_LIBS OFF)
 add_subdirectory(external/portaudio)
 target_link_libraries(${PROJECT_NAME} PRIVATE portaudio)
 
 # kissfft
-option(KISSFFT_TEST OFF)
-option(KISSFFT_TOOLS OFF)
-option(KISSFFT_STATIC ON)
-option(KISSFFT_PKGCONFIG OFF)
+set(KISSFFT_TEST OFF)
+set(KISSFFT_TOOLS OFF)
+set(KISSFFT_STATIC ON)
+set(KISSFFT_TOOLS OFF)
+set(KISSFFT_PKGCONFIG OFF)
 add_subdirectory(external/kissfft)
 target_link_libraries(${PROJECT_NAME} PRIVATE kissfft)
 

@@ -18,7 +18,7 @@ private:
     uint8_t* data_update = 0;
     Shader shader = {};
     int xScrollOffs_location = 0, yScrollOffs_location = 0;
-    Image img = {.data = 0, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8, .mipmaps = 1};
+    Image img = {.data = 0, .width=0, .height=0, .mipmaps = 1, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8};
     Texture2D texture;
 };
 
@@ -32,7 +32,7 @@ private:
     uint8_t* data_update = 0;
     Shader shader = {};
     int xScrollOffs_location = 0, yScrollOffs_location = 0;
-    Image img = {.data = 0, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8, .mipmaps = 1};
+    Image img = {.data = 0, .width=0, .height=0, .mipmaps = 1, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8};
     Texture2D texture;
 };
 

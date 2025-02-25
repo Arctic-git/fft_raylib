@@ -65,9 +65,10 @@
         "__tree": "cpp",
         "map": "cpp",
         "rlgl.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "system_error": "cpp"
     },
-    "cmake.debugConfig": {
-        "MIMode": "lldb"
-      }
+    //"cmake.debugConfig": {
+    //    "MIMode": "lldb"
+    //  }
 }
