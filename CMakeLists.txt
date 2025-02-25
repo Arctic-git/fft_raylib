@@ -74,11 +74,16 @@ add_subdirectory(external/portaudio)
 target_link_libraries(${PROJECT_NAME} PRIVATE portaudio)
 
 # kissfft
-set(KISSFFT_TEST OFF)
+set(KISSFFT_TEST OFF) # on mac set doesnt work, on windows option doesnt work
 set(KISSFFT_TOOLS OFF)
 set(KISSFFT_STATIC ON)
 set(KISSFFT_TOOLS OFF)
 set(KISSFFT_PKGCONFIG OFF)
+option(KISSFFT_TEST OFF)
+option(KISSFFT_TOOLS OFF)
+option(KISSFFT_STATIC ON)
+option(KISSFFT_TOOLS OFF)
+option(KISSFFT_PKGCONFIG OFF)
 add_subdirectory(external/kissfft)
 target_link_libraries(${PROJECT_NAME} PRIVATE kissfft)
 

@@ -1,11 +1,22 @@
 ```
-cd external/imgui 
+cd external
+
+cd imgui 
 git apply ../imgui.patch
 cd ..
+
 cd rlImGui 
 git apply ../rlImGui.patch
+cd ..
+
+cd raylib 
+git apply ../raylib.patch
+cd ..
+
 cd portaudio 
 git apply ../portaudio.patch
+cd ..
+
 ```
 
 ## build
