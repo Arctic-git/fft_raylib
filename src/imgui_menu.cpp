@@ -161,7 +161,8 @@ void draw_audiosource(AudioSourcePA& audioSource) {
         }
         ImGui::SameLine();
         ImGui::Checkbox("enableLoopback", (bool*)&audioSource.config.enableLoopback);
-        if (ImGui::BeginCombo("input", devices[selectedInputDevice].name.c_str())) {
+        const char* selected = selectedInputDevice>=0?  devices[selectedInputDevice].name.c_str() : "none";
+        if (ImGui::BeginCombo("input", selected)) {
             for (int n = 0; n < devices.size(); n++) {
                 if (devices[n].maxInputChannels == 0) continue;
                 const bool is_selected = (selectedInputDevice == n);
@@ -176,7 +177,8 @@ void draw_audiosource(AudioSourcePA& audioSource) {
             }
             ImGui::EndCombo();
         }
-        if (ImGui::BeginCombo("output", devices[selectedOutputDevice].name.c_str())) {
+        selected = selectedOutputDevice>=0?  devices[selectedOutputDevice].name.c_str() : "none";
+        if (ImGui::BeginCombo("output", selected)) {
             for (int n = 0; n < devices.size(); n++) {
                 if (devices[n].maxOutputChannels == 0) continue;
                 const bool is_selected = (selectedOutputDevice == n);

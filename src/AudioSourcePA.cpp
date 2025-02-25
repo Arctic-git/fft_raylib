@@ -151,7 +151,7 @@ int AudioSourcePA::openDevice(int input, int output, int samplerate) {
     }
 
     if (err != paNoError) {
-        fprintf(stderr, "Error during Pa_OpenStream\n");
+        fprintf(stderr, "Error during Pa_OpenStream %d %s\n", err, Pa_GetErrorText(err));
         return err;
     }
 

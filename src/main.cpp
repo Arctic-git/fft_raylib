@@ -39,9 +39,9 @@ int samplerate = 44100;
 namespace fs = std::filesystem;
 fs::path path_res;
 
-extern int rlDrawRenderBatch_cnt;
-extern int rlDrawRenderBatch_drawCounter;
-extern int rlDrawRenderBatch_vertex_cnt;
+/*extern*/ int rlDrawRenderBatch_cnt=0;
+/*extern*/ int rlDrawRenderBatch_drawCounter=0;
+/*extern*/ int rlDrawRenderBatch_vertex_cnt=0;
 
 static Color ImColor_to_Color(ImColor c) {
     return {
@@ -74,26 +74,29 @@ static std::string system_capture(const std::string& cmd) {
 int main(int argc, char* argv[]) {
     path_res = fs::path(GetApplicationDirectory()).append(PATH_RESOURCES_REL);
     TraceLog(LOG_INFO, "Resource Path: '%s'", path_res.string().c_str());
-    if (!DirectoryExists(path_res.c_str())) {
-        TraceLog(LOG_ERROR, "Resource path does not exist! '%s'", path_res.c_str());
+    if (!DirectoryExists(path_res.string().c_str())) {
+        TraceLog(LOG_ERROR, "Resource path does not exist! '%s'", path_res.string().c_str());
     }
 
-    // Image icon = LoadImage(fs::path(path_res).append("icon3.png").c_str());
+    // Image icon = LoadImage(fs::path(path_res).append("icon3.png").string().c_str());
     // SetWindowIcon(icon);s
 
     fs::path path_settings;
 #if defined(PATH_SETTINGS_BASH)
     path_settings = system_capture("bash -c \"echo -n " + std::string(PATH_SETTINGS_BASH) + "\"");
-    MakeDirectory(path_settings.c_str());
+    MakeDirectory(path_settings.string().c_str());
 #else
-    path_settings = "."
+    path_settings = fs::path(GetApplicationDirectory());
 #endif
-    TraceLog(LOG_INFO, "path_settings '%s'", path_settings.c_str());
+    TraceLog(LOG_INFO, "path_settings '%s'", path_settings.string().c_str());
 
     // copy default settings from resources
-    fs::path path_imgui = fs::path(path_settings).append("imgui.ini").c_str();
-    if (!FileExists(path_imgui.c_str())) {
+    fs::path path_imgui = fs::path(path_settings).append("imgui.ini").string().c_str();
+    std::string imgui_path_str = path_imgui.string(); 
+    TraceLog(LOG_INFO, "path_imgui '%s'", path_imgui.string().c_str());
+    if (!FileExists(path_imgui.string().c_str())) {
         fs::copy(fs::path(path_res).append("imgui_default.ini"), path_imgui);
+        TraceLog(LOG_INFO, "copied imgui");
     }
 
     int fftp_window = 1;
@@ -116,16 +119,17 @@ int main(int argc, char* argv[]) {
     // ClearWindowState(FLAG_WINDOW_RESIZABLE);
     // SetWindowState(FLAG_WINDOW_RESIZABLE);
     // std::print("{} {} {}\n", GetCurrentMonitor(), GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
-    SetWindowPosition(GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y);
+
+    SetWindowPosition(GetMonitorPosition(GetCurrentMonitor()).x, GetMonitorPosition(GetCurrentMonitor()).y + 31);
 
     target_fps = GetMonitorRefreshRate(GetCurrentMonitor());
     SetTargetFPS(target_fps);
     rlImGuiSetup(true);
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    ImGui::GetIO().IniFilename = path_imgui.c_str();
+    ImGui::GetIO().IniFilename = imgui_path_str.c_str(); // has to stay in scope
     ImPlot::CreateContext();
 
-    Shader shader = LoadShader(fs::path(path_res).append("custom.vs").c_str(), fs::path(path_res).append("custom.fs").c_str());
+    Shader shader = LoadShader(fs::path(path_res).append("custom.vs").string().c_str(), fs::path(path_res).append("custom.fs").string().c_str());
 
     // remove text optimisation
     // Texture2D texture = {1, 1, 1, 1, 7};
@@ -190,9 +194,9 @@ int main(int argc, char* argv[]) {
         if (IsKeyPressed(KEY_L)) audioSource.config.enableLoopback ^= 1;
         if (IsKeyPressed(KEY_P)) pause ^= 1;
         if (IsKeyPressed(KEY_S)) settings ^= 1;
-        if (IsKeyPressed(KEY_D)) {
-            ImGui::LoadIniSettingsFromDisk(fs::path(path_res).append("imgui_default.ini").c_str());
-        }
+        if (IsKeyPressed(KEY_R)) ImGui::LoadIniSettingsFromDisk(ImGui::GetIO().IniFilename);
+        if (IsKeyPressed(KEY_D)) ImGui::LoadIniSettingsFromDisk(fs::path(path_res).append("imgui_default.ini").string().c_str());
+        
         if (IsKeyPressed(KEY_V)) {
             PerfMon::print();
         }
