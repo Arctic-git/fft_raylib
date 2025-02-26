@@ -1,32 +1,67 @@
-```
+# fft_raylib
+
+## Dependencies
+- **CMake** (version 3.30 or above)
+- **C++23** or higher
+
+## Cloning the Repository
+After cloning, apply the following patches for external dependencies.
+These patches apply minor fixes.
+
+```bash
 cd external
 
-cd imgui 
+cd imgui
 git apply ../imgui.patch
 cd ..
 
-cd rlImGui 
+cd rlImGui
 git apply ../rlImGui.patch
 cd ..
 
-cd raylib 
+cd raylib
 git apply ../raylib.patch
 cd ..
 
-cd portaudio 
+cd portaudio
 git apply ../portaudio.patch
 cd ..
-
 ```
 
-## build
-### windows
-- https://github.com/raysan5/raylib/wiki/Working-on-Windows
-- MinGW-W64/GCC
-  - install and add bin folder to path https://github.com/skeeto/w64devkit/
-    -  `setx PATH "%PATH%;C:\Users\ex6207\AppData\Local\Programs\Git\mingw64\bin\"`
-  - install cmake and add bin folder to path
-  - `mkdir build; cd build;`
-  - `cmake -G "MinGW Makefiles" ..`
-  - `make -j8`
-  - if cmake configure fails the first time try again
+## Building the Project
+
+### macOS
+#### Prerequisites:
+Make sure you have **CMake** installed:
+```bash
+brew install cmake
+```
+
+#### Build using CMake:
+```bash
+mkdir build && cd build
+cmake ..
+make -j8
+```
+
+### Windows
+More infos are in the official [raylib Windows setup guide](https://github.com/raysan5/raylib/wiki/Working-on-Windows).
+
+#### MinGW-W64/GCC:
+1. Install MinGW-W64/GCC and add the `bin` folder to your PATH. For example:
+    ```bash
+    setx PATH "%PATH%;C:\Users\...\bin\"
+    ```
+2. Install CMake and add its `bin` folder to your PATH.
+3. Build with CMake:
+    ```bash
+    mkdir build; cd build
+    cmake -G "MinGW Makefiles" ..
+    make -j8
+    ```
+
+#### Visual Studio:
+Todo
+
+#### Troubleshooting:
+If the CMake configuration fails the first time, try running the `cmake` command again.
