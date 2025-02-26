@@ -48,7 +48,7 @@ make -j8
 More infos are in the official [raylib Windows setup guide](https://github.com/raysan5/raylib/wiki/Working-on-Windows).
 
 #### MinGW-W64/GCC:
-1. Install MinGW-W64/GCC and add the `bin` folder to your PATH. For example:
+1. Install MinGW-W64/GCC `w64devkit-x64-2.0.0` and add the `bin` folder to your PATH. For example:
     ```bash
     setx PATH "%PATH%;C:\Users\...\bin\"
     ```
@@ -56,7 +56,9 @@ More infos are in the official [raylib Windows setup guide](https://github.com/r
 3. Build with CMake:
     ```bash
     mkdir build; cd build
-    cmake -G "MinGW Makefiles" ..
+    cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+    # or
+    cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER:FILEPATH=C:\Users\...\w64devkit\bin\gcc.exe -DCMAKE_CXX_COMPILER:FILEPATH=C:\...\w64devkit\bin\g++.exe ..
     make -j8
     ```
 
@@ -64,4 +66,4 @@ More infos are in the official [raylib Windows setup guide](https://github.com/r
 Todo
 
 #### Troubleshooting:
-If the CMake configuration fails the first time, try running the `cmake` command again.
+If the CMake configuration fails the first time, try running the `cmake` command again. Or add Windows defender exception to this folder
