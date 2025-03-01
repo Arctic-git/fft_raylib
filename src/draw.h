@@ -37,6 +37,9 @@ private:
 };
 
 void xy_line(Rectangle b, float* l, float* r, int samples, Color c);
+void xy_osc(Rectangle b, float* l, float* r, int samples, Color c, float iSize, float iIntensity, float iLenDarken);
+
+
 // void fft_conti(Rectangle b, float* f, int samples, bool wave_fill, bool wave_outline, int colormode, float min = -66, float max = -12);
 void fft_conti2(Rectangle b, float* f, int samples, float minFreq, float maxFreq, bool logspacing, bool wave_fill, bool wave_outline, int colormode, float min = -66, float max = -12);
 

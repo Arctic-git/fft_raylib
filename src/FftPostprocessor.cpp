@@ -37,9 +37,8 @@ static float noteToFreq(float note) {
 }
 
 static void blur(float* work, const float* input, float* blurred, int count, int passes) {
-    memcpy(work, input, count * sizeof(float));
-
     if (passes > 0) {
+        memcpy(work, input, count * sizeof(float));
         for (int p = 0; p < passes; p++) {
             for (int i = 0; i < count; i++) {
                 float right = work[(i + count + 1) % count];
@@ -64,7 +63,7 @@ static void smooth(const float* input, int count, float* smooth, float alphaUp, 
         else
             smooth[i] = inputValue * alphaDn + smooth[i] * (1 - alphaDn);
 
-        if (smooth[i] < 0.00001) smooth[i] = 0; // avoid denormalized floats (<-100dB)
+        if (smooth[i] < 1e-10) smooth[i] = 1e-10; // avoid denormalized floats 1e-10 (<-200dB). (denormals start at < 1.18e-38)
     }
 }
 
@@ -128,10 +127,12 @@ static void bin_lerp(const float* input, int inputSize, float* output, int outpu
         if (lerp && num_bins <= 2) {
             float x_rel = (float)(x) / (outputSize - 1);
             int bin = std::floor(xToFreq(x_rel, minFreq, maxFreq, logspacing) / bw);
+            int bin_1 = std::clamp(bin + 1, 0, inputSize - 1);
+
             float x_rel_left = freqToX(bin * bw, minFreq, maxFreq, logspacing);
-            float x_rel_right = freqToX((bin + 1) * bw, minFreq, maxFreq, logspacing);
+            float x_rel_right = freqToX(bin_1 * bw, minFreq, maxFreq, logspacing);
             float f_left = input[bin];
-            float f_right = input[bin + 1];
+            float f_right = input[bin_1];
 
             // lerp
             float a = (x_rel - x_rel_left) / (x_rel_right - x_rel_left);

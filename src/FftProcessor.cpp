@@ -93,11 +93,11 @@ void FftProcessor::allocate(int N, int paddingFactor) {
     slopFactorsSetTo = -1;
     slopeFactors = new float[N / 2 + 1];
 
-    soundWindowedDebugTmp = new float[NwoPadding];
-    soundWindowedDebug = &soundWindowed[((N - NwoPadding) / 2)];
+    // soundWindowedDebugTmp = new float[NwoPadding];
+    // soundWindowedDebug = &soundWindowed[((N - NwoPadding) / 2)];
 }
 void FftProcessor::deallocate() {
-    delete[] soundWindowedDebugTmp;
+    // delete[] soundWindowedDebugTmp;
     delete[] slopeFactors;
     delete[] fftCpxData;
     kiss_fftr_free(fftCfg);
@@ -150,23 +150,24 @@ void FftProcessor::updateWindow(int windowFunction) {
 
 static void precalculateSlope(float* factors, int N, float slope) {
     for (int i = 0; i < N / 2 + 1; i++) {
-        if (slope == 6) { //'6db' slope
-            factors[i] = (i + 1) / (sqrt(N / 2) + 1);
-        } else if (slope == 3) { //'3db' slope
-            factors[i] = sqrtf((i + 1) / (sqrtf(N / 2) + 1));
-        } else if (slope == 0) {
-            factors[i] = 1;
-        } else {                                                        // slow
-            factors[i] = powf((i + 1) / (sqrtf(N / 2) + 1), slope / 6); // sqrt(N/2) = slope in the middle
-        }
+        // if (slope == 6) { //'6db' slope
+        //     factors[i] = (i + 1) / (sqrt(N / 2) + 1);
+        // } else if (slope == 3) { //'3db' slope
+        //     factors[i] = sqrtf((i + 1) / (sqrtf(N / 2) + 1));
+        // } else if (slope == 0) {
+        //     factors[i] = 1;
+        // } else {                                                        // slow
+        factors[i] = powf((i + 1) / (sqrtf(N / 2) + 1), slope / 6);       // sqrt(N/2) = slope in the middle
+        factors[i] = factors[i] / (powf((float)N / 2048, slope / 6 / 2)); // normalize amplitude for num bins
+        // }
     }
 }
 
 void FftProcessor::process(float* input) {
     int numZeros = N - NwoPadding;
 
-    for (int i = (numZeros / 2); i < (numZeros / 2 + NwoPadding); i++) {
-        soundWindowed[i] = fftWindow[i - numZeros / 2] * input[i - numZeros / 2];
+    for (int i = 0; i < NwoPadding; i++) {
+        soundWindowed[i + numZeros / 2] = fftWindow[i] * input[i];
     }
 
     kiss_fftr(fftCfg, soundWindowed, fftCpxData);
@@ -194,7 +195,7 @@ void FftProcessor::process(float* input) {
 void FftProcessor::process(float* inputLeft, float* inputRight) {
     process(inputLeft);
     memcpy(fftResultTmp, fftResult, (N / 2 + 1) * sizeof(float));
-    memcpy(soundWindowedDebugTmp, soundWindowedDebug, NwoPadding * sizeof(float));
+    // memcpy(soundWindowedDebugTmp, soundWindowedDebug, NwoPadding * sizeof(float));
     process(inputRight);
 
     for (int i = 0; i < N / 2 + 1; i++) {

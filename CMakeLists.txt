@@ -4,9 +4,9 @@ project (fft_raylib)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
 
 # project sources
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp" "src/*.c") 
@@ -31,6 +31,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 # set(EXE_PREFIX open -a ./)
 # set(EXE_PREFIX ./)
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="../Resources")
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_DEVEL_ABS="${CMAKE_SOURCE_DIR}/resources")
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_SETTINGS_BASH="$HOME/Library/Application Support/${PROJECT_NAME}")
 else()
 #file(COPY resources DESTINATION  ${CMAKE_BINARY_DIR}) # doesnt cause cmake update
@@ -40,6 +41,7 @@ foreach(ASSET ${resource_files})
 endforeach()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_REL="resources") 
+target_compile_definitions(${PROJECT_NAME} PRIVATE PATH_RESOURCES_DEVEL_ABS="${CMAKE_SOURCE_DIR}/resources")
 endif()
 
 # raylib

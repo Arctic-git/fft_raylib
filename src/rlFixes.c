@@ -1,8 +1,12 @@
 #include "rlFixes.h"
 #include "raymath.h"
 #include "rlgl.h"
+#include <stdint.h>
+#include <stdio.h>
 
 #define SUPPORT_QUADS_DRAW_MODE 1
+
+bool DrawLineExQuadsDc_expand = true;
 
 // Draw a color-filled rectangle with pro parameters
 // mod: added texturecoords for triangle draw mode
@@ -92,46 +96,22 @@ void DrawRectanglePro2(Rectangle rec, Vector2 origin, float rotation, Color colo
 #endif
 }
 
-// Draw a line defining thickness
 
-// mod use quads and texture coordinates
-void DrawLineEx2(Vector2 startPos, Vector2 endPos, float thick, Color color) {
+
+void DrawLineExQuadsDc(Vector2 startPos, Vector2 endPos, float thick, Color color, Color color2) {
     Vector2 delta = {endPos.x - startPos.x, endPos.y - startPos.y};
     float length = sqrtf(delta.x * delta.x + delta.y * delta.y);
 
-    if ((length > 0) && (thick > 0)) {
+    if (DrawLineExQuadsDc_expand) {
         float scale = thick / (2 * length);
+        startPos.x -= delta.x * scale;
+        startPos.y -= delta.y * scale;
+        endPos.x += delta.x * scale;
+        endPos.y += delta.y * scale;
 
-        Vector2 radius = {-scale * delta.y, scale * delta.x};
-        Vector2 strip[4] = {
-            {startPos.x - radius.x, startPos.y - radius.y},
-            {startPos.x + radius.x, startPos.y + radius.y},
-            {endPos.x - radius.x, endPos.y - radius.y},
-            {endPos.x + radius.x, endPos.y + radius.y}};
-
-        rlSetTexture(GetShapesTexture().id);
-        Rectangle shapeRect = GetShapesTextureRectangle();
-        Texture2D texShapes = {1, 1, 1, 1, 7};
-
-        rlBegin(RL_QUADS);
-        rlNormal3f(0.0f, 0.0f, 1.0f);
-        rlColor4ub(color.r, color.g, color.b, color.a);
-        rlTexCoord2f(shapeRect.x / texShapes.width, shapeRect.y / texShapes.height);
-        rlVertex2f(strip[0].x, strip[0].y);
-        rlTexCoord2f(shapeRect.x / texShapes.width, (shapeRect.y + shapeRect.height) / texShapes.height);
-        rlVertex2f(strip[1].x, strip[1].y);
-        rlTexCoord2f((shapeRect.x + shapeRect.width) / texShapes.width, (shapeRect.y + shapeRect.height) / texShapes.height);
-        rlVertex2f(strip[3].x, strip[3].y);
-        rlTexCoord2f((shapeRect.x + shapeRect.width) / texShapes.width, shapeRect.y / texShapes.height);
-        rlVertex2f(strip[2].x, strip[2].y);
-        rlEnd();
-        rlSetTexture(0);
+        delta = (Vector2){endPos.x - startPos.x, endPos.y - startPos.y};
+        length += thick;
     }
-}
-
-void DrawLineExDualcolor(Vector2 startPos, Vector2 endPos, float thick, Color color, Color color2) {
-    Vector2 delta = {endPos.x - startPos.x, endPos.y - startPos.y};
-    float length = sqrtf(delta.x * delta.x + delta.y * delta.y);
 
     if ((length > 0) && (thick > 0)) {
         float scale = thick / (2 * length);
@@ -154,23 +134,59 @@ void DrawLineExDualcolor(Vector2 startPos, Vector2 endPos, float thick, Color co
         rlEnd();
     }
 }
+void DrawLineExQuads(Vector2 startPos, Vector2 endPos, float thick, Color color) {
+    DrawLineExQuadsDc(startPos, endPos, thick, color, color);
+}
 
-// expand all corners outwards
-// x---------x
-// |  -----  |
-// x---------x
-void DrawLineEx3(Vector2 startPos, Vector2 endPos, float thick, Color color) {
+
+// mod use quads and texture coordinates
+void DrawLineExQuadsTexturecoordsLengthembed(Vector2 startPos, Vector2 endPos, float thick, Color color) {
     Vector2 delta = {endPos.x - startPos.x, endPos.y - startPos.y};
     float length = sqrtf(delta.x * delta.x + delta.y * delta.y);
+    float orig_length = length;
 
-    if ((length > 0) && (thick > 0)) {
+    if (DrawLineExQuadsDc_expand) {
         float scale = thick / (2 * length);
-
         startPos.x -= delta.x * scale;
         startPos.y -= delta.y * scale;
         endPos.x += delta.x * scale;
         endPos.y += delta.y * scale;
 
-        DrawLineEx2(startPos, endPos, thick, color);
+        delta = (Vector2){endPos.x - startPos.x, endPos.y - startPos.y};
+        length += thick;
+    }
+
+    // printf("length %f\n", length);
+
+    if ((length > 0) && (thick > 0)) {
+        float scale = thick / (2 * length);
+
+        Vector2 radius = {-scale * delta.y, scale * delta.x};
+        Vector2 strip[4] = {
+            {startPos.x - radius.x, startPos.y - radius.y},
+            {startPos.x + radius.x, startPos.y + radius.y},
+            {endPos.x - radius.x, endPos.y - radius.y},
+            {endPos.x + radius.x, endPos.y + radius.y}};
+
+        rlSetTexture(GetShapesTexture().id);
+        Rectangle shapeRect = GetShapesTextureRectangle();
+        Texture2D texShapes = {1, 1, 1, 1, 7};
+
+        rlBegin(RL_QUADS);
+        rlNormal3f(0.0f, 0.0f, 1.0f);
+
+        uint32_t fasi = *(uint32_t*)&orig_length; // encode float as rgba
+        rlColor4ub(fasi >> 24, fasi >> 16, fasi >> 8, fasi);
+
+        rlTexCoord2f(shapeRect.x / texShapes.width, shapeRect.y / texShapes.height);
+        rlVertex2f(strip[0].x, strip[0].y);
+        rlTexCoord2f(shapeRect.x / texShapes.width, (shapeRect.y + shapeRect.height) / texShapes.height);
+        rlVertex2f(strip[1].x, strip[1].y);
+        rlTexCoord2f((shapeRect.x + shapeRect.width) / texShapes.width, (shapeRect.y + shapeRect.height) / texShapes.height);
+        rlVertex2f(strip[3].x, strip[3].y);
+        rlTexCoord2f((shapeRect.x + shapeRect.width) / texShapes.width, shapeRect.y / texShapes.height);
+        rlVertex2f(strip[2].x, strip[2].y);
+        rlEnd();
+        rlSetTexture(0);
     }
 }

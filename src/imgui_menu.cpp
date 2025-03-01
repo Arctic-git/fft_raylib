@@ -12,6 +12,16 @@ void static_checkbox(const char* label, bool val) {
     ImGui::Checkbox(label, &val);
 }
 
+void window_flag_checkbox(int flag, const char* name) {
+    bool value = IsWindowState(flag);
+    if (ImGui::Checkbox(name, &value)) {
+        if (value)
+            SetWindowState(flag);
+        else
+            ClearWindowState(flag);
+    }
+}
+
 void draw_window(int argc, char* argv[]) {
 
     if (ImGui::TreeNodeEx("Window", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
@@ -62,34 +72,13 @@ void draw_window(int argc, char* argv[]) {
         ImGui::SameLine();
         if (ImGui::Button("RestoreWindow")) RestoreWindow();
 
-        int resizable = IsWindowState(FLAG_WINDOW_RESIZABLE);
-        if (ImGui::Checkbox("resizable", (bool*)&resizable)) {
-            if (resizable)
-                SetWindowState(FLAG_WINDOW_RESIZABLE);
-            else
-                ClearWindowState(FLAG_WINDOW_RESIZABLE);
-        }
-        int undecorated = IsWindowState(FLAG_WINDOW_UNDECORATED);
-        if (ImGui::Checkbox("undecorated", (bool*)&undecorated)) {
-            if (undecorated)
-                SetWindowState(FLAG_WINDOW_UNDECORATED);
-            else
-                ClearWindowState(FLAG_WINDOW_UNDECORATED);
-        }
-        int topmost = IsWindowState(FLAG_WINDOW_TOPMOST);
-        if (ImGui::Checkbox("topmost", (bool*)&topmost)) {
-            if (topmost)
-                SetWindowState(FLAG_WINDOW_TOPMOST);
-            else
-                ClearWindowState(FLAG_WINDOW_TOPMOST);
-        }
-        int always_run = IsWindowState(FLAG_WINDOW_ALWAYS_RUN);
-        if (ImGui::Checkbox("always_run", (bool*)&always_run)) {
-            if (always_run)
-                SetWindowState(FLAG_WINDOW_ALWAYS_RUN);
-            else
-                ClearWindowState(FLAG_WINDOW_ALWAYS_RUN);
-        }
+        window_flag_checkbox(FLAG_WINDOW_RESIZABLE, "resizable");
+        ImGui::SameLine();
+        window_flag_checkbox(FLAG_WINDOW_UNDECORATED, "undecorated");
+        window_flag_checkbox(FLAG_WINDOW_TOPMOST, "topmost");
+        ImGui::SameLine();
+        window_flag_checkbox(FLAG_WINDOW_ALWAYS_RUN, "always_run");
+
 
         Vector2 pos = GetWindowPosition();
         if (ImGui::DragFloat2("pos", (float*)&pos)) {
@@ -106,13 +95,10 @@ void draw_window(int argc, char* argv[]) {
             SetWindowPosition(pos.x, pos.y);
         }
 
-        int vsync = IsWindowState(FLAG_VSYNC_HINT);
-        if (ImGui::Checkbox("vsync", (bool*)&vsync)) {
-            if (vsync)
-                SetWindowState(FLAG_VSYNC_HINT);
-            else
-                ClearWindowState(FLAG_VSYNC_HINT);
-        }
+        window_flag_checkbox(FLAG_VSYNC_HINT, "vsync");
+        ImGui::SameLine();
+        window_flag_checkbox(FLAG_MSAA_4X_HINT, "msaa_4x");
+
         if (ImGui::SliderInt("Target Fps", &target_fps, 0, 120))
             SetTargetFPS(target_fps);
 
@@ -133,14 +119,16 @@ void draw_window(int argc, char* argv[]) {
     }
 }
 
-void draw_perf(int freshSamples) {
+bool draw_perf(int freshSamples) {
     if (ImGui::TreeNodeEx("Performance", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
         static FrametimeGraph frametimegraphmain("Main Frametime", 5, 32);
         frametimegraphmain.Draw(GetFrameTime() * 1000);
         static NumberGraph freshsamplesgraph("Fresh samples", 0, 2000);
         freshsamplesgraph.Draw(freshSamples);
         ImGui::TreePop();
+        return true;
     }
+    return false;
 }
 
 void draw_audiosource(AudioSourcePA& audioSource) {
@@ -161,7 +149,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
         }
         ImGui::SameLine();
         ImGui::Checkbox("enableLoopback", (bool*)&audioSource.config.enableLoopback);
-        const char* selected = selectedInputDevice>=0?  devices[selectedInputDevice].name.c_str() : "none";
+        const char* selected = selectedInputDevice >= 0 ? devices[selectedInputDevice].name.c_str() : "none";
         if (ImGui::BeginCombo("input", selected)) {
             for (int n = 0; n < devices.size(); n++) {
                 if (devices[n].maxInputChannels == 0) continue;
@@ -177,7 +165,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
             }
             ImGui::EndCombo();
         }
-        selected = selectedOutputDevice>=0?  devices[selectedOutputDevice].name.c_str() : "none";
+        selected = selectedOutputDevice >= 0 ? devices[selectedOutputDevice].name.c_str() : "none";
         if (ImGui::BeginCombo("output", selected)) {
             for (int n = 0; n < devices.size(); n++) {
                 if (devices[n].maxOutputChannels == 0) continue;
@@ -197,7 +185,7 @@ void draw_audiosource(AudioSourcePA& audioSource) {
         const int smp_int[] = {44100, 48000, 88200, 96000, 176400, 192000};
         const char* smp_chr[] = {"44100", "48000", "88200", "96000", "176400", "192000"};
         static int smp_idx = 0;
-        if(ImGui::Combo("samplerate", &smp_idx, smp_chr, IM_ARRAYSIZE(smp_chr))){
+        if (ImGui::Combo("samplerate", &smp_idx, smp_chr, IM_ARRAYSIZE(smp_chr))) {
             samplerate = smp_int[smp_idx];
             audioSource.openDevice(selectedInputDevice, selectedOutputDevice, samplerate);
         }

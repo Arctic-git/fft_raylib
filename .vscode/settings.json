@@ -72,8 +72,7 @@
         "format": "cpp",
         "iostream": "cpp"
     },
-    "idf.pythonInstallPath": "C:\\Users\\Sebastian\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
-    //"cmake.debugConfig": {
-    //    "MIMode": "lldb"
-    //  }
+    "cmake.debugConfig": {
+       "MIMode": "lldb"
+     }
 }

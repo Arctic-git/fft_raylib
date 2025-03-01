@@ -123,7 +123,7 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
                 b.y + b.height / 2 - b.height / 2 * lwmin[i + 1],
             };
 
-            DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE);
+            DrawLineExQuads(v_1, v_2, draw_line_width, WHITE);
             // DrawCircleV(v_1, 1, WHITE);
         }
         for (int i = 0; i < wavebins - 1; i++) {
@@ -136,7 +136,7 @@ void wave_line(Rectangle b, float* l, int samples, int wavebins, bool wave_fill,
                 b.y + b.height / 2 - b.height / 2 * lwmax[i + 1],
             };
 
-            DrawLineExDualcolor(v_1, v_2, draw_line_width, WHITE, WHITE);
+            DrawLineExQuads(v_1, v_2, draw_line_width, WHITE);
             // DrawCircleV(v_1, 1, WHITE);
         }
     }
@@ -270,10 +270,61 @@ void xy_line(Rectangle b, float* l, float* r, int samples, Color c) {
         // }
 
         // DrawLineEx(v_1, v_2, draw_line_width, WHITE); //6 vertecies per line
-        DrawLineExDualcolor(v_1, v_2, draw_line_width, c, c); // 4 vertecies per line
+        DrawLineExQuads(v_1, v_2, draw_line_width, c); // 4 vertecies per line
         // DrawPixelV(v_1, WHITE);
         // DrawCircleV(v_1, 1, WHITE);
     }
+}
+
+void xy_osc(Rectangle b, float* l, float* r, int samples, Color c, float iSize, float iIntensity, float iLenDarken) {
+    float alpha = c.a;
+    float fcolor[] = {c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f};
+
+    static Shader shader = {};
+    if (!IsShaderValid(shader)) {
+        UnloadShader(shader);
+        shader = LoadShader(NULL, fs::path(path_res).append("oscline.fs").string().c_str());
+    }
+
+    if (IsShaderValid(shader)) {
+        SetShaderValue(shader, GetShaderLocation(shader, "iSize"), (void*)&iSize, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(shader, GetShaderLocation(shader, "iIntensity"), (void*)&iIntensity, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(shader, GetShaderLocation(shader, "iLenDarken"), (void*)&iLenDarken, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(shader, GetShaderLocation(shader, "iColor"), (void*)&fcolor, SHADER_UNIFORM_VEC4);
+        BeginShaderMode(shader);
+    }
+
+    BeginBlendMode(BLEND_ADDITIVE);
+
+    for (int i = 0; i < samples - 1; i++) {
+
+        Vector2 s_1 = {
+            Clamp(l[i], -1, 1),
+            Clamp(r[i], -1, 1),
+        };
+        Vector2 s_2 = {
+            Clamp(l[i + 1], -1, 1),
+            Clamp(r[i + 1], -1, 1),
+        };
+        Vector2 v_1 = {
+            b.x + b.width / 2 + b.width / 2 * s_1.x,
+            b.y + b.height / 2 - b.height / 2 * s_1.y,
+        };
+        Vector2 v_2 = {
+            b.x + b.width / 2 + b.width / 2 * s_2.x,
+            b.y + b.height / 2 - b.height / 2 * s_2.y,
+        };
+
+        // if (c.a == 254) {
+        float len = Vector2Length({s_2.x - s_1.x, s_2.y - s_1.y});
+        c.a = alpha * Clamp(1 - len, 0, 1);
+        // }
+
+        DrawLineExQuadsTexturecoordsLengthembed(v_1, v_2, iSize * 2, c); // 4 vertecies per line
+    }
+
+    EndBlendMode();
+    EndShaderMode();
 }
 
 // 0/6: RED, 1/6: YELLOW, 2/6: GREEN, 3/6: CYAN, 4/6: BLUE, 5/6: PURPLE, 6/6: RED
@@ -660,7 +711,7 @@ void fft_conti2(Rectangle b, float* f, int samples, float minFreq, float maxFreq
             // Color color = hsv(relativex * 360.0, 0.8, 1);
             Color color = fftColor(relativex, 0, colormode, 0.8);
             Color color_1 = fftColor(relativex_1, 0, colormode, 0.8);
-            DrawLineExDualcolor(v_1, v_2, draw_line_width, color, color_1);
+            DrawLineExQuadsDc(v_1, v_2, draw_line_width, color, color_1);
             // DrawCircleV(v_1, 1, WHITE);
         }
 
@@ -702,7 +753,7 @@ void fft_scrolltexture::draw(Rectangle b, float* f, int samples, float minFreq, 
         UnloadTexture(texture);
         texture = LoadTextureFromImage(img);
         SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
-        // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP); 
+        // SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
     }
 
     y = (y - 1 + texture.height) % texture.height;
