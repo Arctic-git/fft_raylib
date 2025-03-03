@@ -276,7 +276,7 @@ void xy_line(Rectangle b, float* l, float* r, int samples, Color c) {
     }
 }
 
-void xy_osc(Rectangle b, float* l, float* r, int samples, Color c, float iSize, float iIntensity, float iLenDarken) {
+void xy_osc(Rectangle b, float* l, float* r, int samples, Color c, float iSize, float iIntensity, float iLenDarken, float iSigma) {
     float alpha = c.a;
     float fcolor[] = {c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f};
 
@@ -289,6 +289,7 @@ void xy_osc(Rectangle b, float* l, float* r, int samples, Color c, float iSize, 
     if (IsShaderValid(shader)) {
         SetShaderValue(shader, GetShaderLocation(shader, "iSize"), (void*)&iSize, SHADER_UNIFORM_FLOAT);
         SetShaderValue(shader, GetShaderLocation(shader, "iIntensity"), (void*)&iIntensity, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(shader, GetShaderLocation(shader, "iSigma"), (void*)&iSigma, SHADER_UNIFORM_FLOAT);
         SetShaderValue(shader, GetShaderLocation(shader, "iLenDarken"), (void*)&iLenDarken, SHADER_UNIFORM_FLOAT);
         SetShaderValue(shader, GetShaderLocation(shader, "iColor"), (void*)&fcolor, SHADER_UNIFORM_VEC4);
         BeginShaderMode(shader);

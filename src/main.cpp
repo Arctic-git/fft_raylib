@@ -184,6 +184,7 @@ int main(int argc, char* argv[]) {
     bool xy_shader = false;
     float osc_iSize = 5;
     float osc_iIntensity = 1;
+    float osc_iSigma = 1;
     float osc_iLenDarken = 1;
 
     float fft_min = -78, fft_max = -18;
@@ -357,7 +358,7 @@ int main(int argc, char* argv[]) {
                 Rectangle b = {canvas_p0.x, canvas_p0.y, canvas_sz.x, canvas_sz.y};
                 if (xy_scissor) BeginScissorMode(SP_RECT(b));
                 if (xy_shader)
-                    xy_osc(b, l, r, wave_samples, ImColor_to_Color(xy_osc_color), osc_iSize, osc_iIntensity, osc_iLenDarken);
+                    xy_osc(b, l, r, wave_samples, ImColor_to_Color(xy_osc_color), osc_iSize, osc_iIntensity, osc_iLenDarken, osc_iSigma);
                 else
                     xy_line(b, l, r, wave_samples, ImColor_to_Color(xy_color));
                 if (xy_scissor) EndScissorMode();
@@ -482,8 +483,9 @@ int main(int argc, char* argv[]) {
                     ImGui::ColorEdit4("xy color", (float*)&xy_color);
                     ImGui::ColorEdit4("xy osc color", (float*)&xy_osc_color);
                     ImGui::SliderFloat("iSize", &osc_iSize, 0, 20, "%.2f", ImGuiSliderFlags_Logarithmic);
-                    ImGui::SliderFloat("iIntensity", &osc_iIntensity, 0, 1);
-                    ImGui::SliderFloat("iLenDarken", &osc_iLenDarken, 0, 1);
+                    ImGui::SliderFloat("iIntensity", &osc_iIntensity, 0, 10, "%.2f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::SliderFloat("iSigma", &osc_iSigma, 0, 2, "%.2f");
+                    ImGui::SliderFloat("iLenDarken", &osc_iLenDarken, 0, 1, "%.2f");
                     ImGui::TreePop();
                 }
 

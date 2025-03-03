@@ -43,6 +43,7 @@ float erf(float x) {
 uniform float iLenDarken = 1;
 uniform float iSize = 10; // thickness/2
 uniform float iIntensity = 1;
+uniform float iSigma = 1;
 uniform vec4 iColor = vec4(1,0,0,1);
 
 void main() {
@@ -56,7 +57,7 @@ void main() {
   xy.y = (uv.y * 2 - 1) * iSize;            //[-iSize, iSize]
   xy.x = -iSize + uv.x * (iSize * 2 + len); //[-iSize, iSize+len]
 
-  float sigma = iSize / 4.0; // /8 is sharper but not correct?
+  float sigma = iSize / 4.0 * iSigma; // /8 is sharper but not correct?
   float alpha;
 
   if (len < 0.2) {
